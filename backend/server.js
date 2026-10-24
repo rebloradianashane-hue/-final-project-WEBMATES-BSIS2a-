@@ -1,68 +1,41 @@
-require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/db');
+const mongoose = require('mongoose'); // 1. Import Mongoose
 
 const app = express();
-connectDB();
 
-app.use(cors());
 app.use(express.json());
 
+// Replace this string with your real MongoDB URI (Local or MongoDB Atlas)
+const MONGO_URI = 'mongodb+srv://webmates:webmates@final-projectwebmates-b.8wrzsvo.mongodb.net/';
+// 2. Connect to MongoDB
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('✅ Connected to MongoDB successfully!'))
+    .catch((err) => console.error('❌ MongoDB connection error:', err));
+
+// Import Routes
+const registerRoutes = require('./routes/registerRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
+const userRoutes = require('./routes/userRoutes');
+const productsRoutes = require('./routes/productsRoutes');
+const deliveryRoutes = require('./routes/deliveryRoutes');
+const orderRoutes = require('./routes/orderRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+
+// Map Routes
+app.use('/api/register', registerRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/products', productsRoutes);
+app.use('/api/deliveries', deliveryRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
+
+// Root Health Route
 app.get('/', (req, res) => {
-    res.send('API is running...');
+    res.send('Full Multi-Route Application API is running...');
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running smoothly on port ${PORT}`);
 });
-
-const mongoose = require('mongoose');
- 
-const orderSchema = new mongoose.Schema({
-  // Connects this order directly to a specific User ID in your database
-  userId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
-  },
-  items: [{
-    productName: { type: String, required: true },
-    quantity: { type: Number, required: true, default: 1 },
-    price: { type: Number, required: true }
-  }],
-  totalAmount: { type: Number, required: true },
-  paymentStatus: { 
-    type: String, 
-    enum: ['pending', 'paid', 'failed'], 
-    default: 'pending' 
-  }
-}, { timestamps: true }); // Automatically adds createdAt and updatedAt timestamps
- 
-// Export it as 'Order'
-module.exports = mongoose.model('Order', orderSchema);
- 
-const deliverySchema = new mongoose.Schema({
-  // Connects this tracking document directly to a specific Order ID
-  orderId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Order', 
-    required: true 
-  },
-  deliveryAddress: {
-    street: { type: String, required: true },
-    city: { type: String, required: true },
-    postalCode: { type: String, required: true }
-  },
-  courierName: { type: String, default: 'Unassigned' },
-  deliveryStatus: { 
-    type: String, 
-    enum: ['processing', 'shipped', 'out-for-delivery', 'delivered', 'cancelled'], 
-    default: 'processing' 
-  },
-  estimatedDeliveryDate: { type: Date }
-}, { timestamps: true });
- 
-// Export it as 'Delivery'
-module.exports = mongoose.model('Delivery', deliverySchema);
