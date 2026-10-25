@@ -1,13 +1,11 @@
 const express = require('express');
-const mongoose = require('mongoose'); // 1. Import Mongoose
-
+const mongoose = require('mongoose'); 
 const app = express();
 
 app.use(express.json());
 
-// Replace this string with your real MongoDB URI (Local or MongoDB Atlas)
 const MONGO_URI = 'mongodb+srv://webmates:webmates@final-projectwebmates-b.8wrzsvo.mongodb.net/';
-// 2. Connect to MongoDB
+// Connect to MongoDB
 mongoose.connect(MONGO_URI)
     .then(() => console.log('✅ Connected to MongoDB successfully!'))
     .catch((err) => console.error('❌ MongoDB connection error:', err));
@@ -30,7 +28,7 @@ app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 
-// Root Health Route
+
 app.get('/', (req, res) => {
     res.send('Full Multi-Route Application API is running...');
 });

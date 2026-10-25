@@ -6,10 +6,7 @@ const userSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    address: {
-        type: String,
-        required: true
-    },
+    
     role: {
         type: String,
         required: true,
