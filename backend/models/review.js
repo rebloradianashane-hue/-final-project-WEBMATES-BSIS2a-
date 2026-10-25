@@ -7,7 +7,7 @@ const reviewSchema = new mongoose.Schema({
         required: true
     },
     productName: {
-        type: String, // Kept as String to perfectly align with your target request configuration
+        type: String, 
         required: true,
         trim: true
     },
