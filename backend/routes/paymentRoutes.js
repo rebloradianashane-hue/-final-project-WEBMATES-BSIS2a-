@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const Payment = require('../models/payments'); // Ensure lowercase 'payments' matches your file name
+// Siguraduhing may file na payments.js (o Payments.js) sa loob ng backend/models folder
+const Payment = require('../models/payment'); 
 
 // 1. POST: Process a transaction payment
 router.post('/process', async (req, res) => {
@@ -20,7 +21,8 @@ router.post('/process', async (req, res) => {
 // 2. GET: Retrieve all payment logs
 router.get('/', async (req, res) => {
     try {
-        const payments = await Payment.find();
+        // 📌 INAYOS: Binago mula 'payment' papuntang 'Payment' (Capital P)
+        const payments = await Payment.find(); 
         res.status(200).json(payments);
     } catch (error) {
         res.status(500).json({ error: error.message });

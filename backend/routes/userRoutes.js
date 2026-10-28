@@ -2,14 +2,25 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/user'); 
 
-// 1. POST: Register a user
+// Route A: POST /api/users/register
 router.post('/register', async (req, res) => {
     try {
-        const { name, contactNumber, password, userRole } = req.body;
-        if (!name || !contactNumber || !password || !userRole) {
-            return res.status(400).json({ error: 'All fields are required.' });
+        const { name, contactNumber, password, userRole, email } = req.body;
+        
+        // Handle input fields flexibly depending on your schema
+        if (!name || !password) {
+            return res.status(400).json({ error: 'Name and password are required.' });
         }
-        const newUser = new User({ name, contactNumber, password, role: userRole, address: "Not Provided Yet" });
+
+        const newUser = new User({ 
+            name, 
+            contactNumber: contactNumber || "Not Provided", 
+            email: email || "no-email@provided.com",
+            password, 
+            role: userRole || "user", 
+            address: "Not Provided Yet" 
+        });
+
         const savedUser = await newUser.save();
         res.status(201).json({ message: 'User created successfully!', user: savedUser });
     } catch (error) {
@@ -17,7 +28,34 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// 2. GET: Fetch all users
+// Route B: POST /api/users (Matches standard RESTful convention)
+router.post('/', async (req, res) => {
+    try {
+        const { name, email, password, contactNumber, userRole } = req.body;
+        
+        if (!name || (!email && !contactNumber) || !password) {
+            return res.status(400).json({ error: 'Name, email/contact, and password are required.' });
+        }
+
+        const newUser = new User({
+            name,
+            email,
+            contactNumber,
+            password,
+            role: userRole || "user",
+            address: "Not Provided Yet"
+        });
+
+        const savedUser = await newUser.save();
+        res.status(201).json({ success: true, message: 'User created successfully!', user: savedUser });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ==========================================
+// 2. GET: Fetch all users (GET /api/users)
+// ==========================================
 router.get('/', async (req, res) => {
     try {
         const users = await User.find();
@@ -27,13 +65,15 @@ router.get('/', async (req, res) => {
     }
 });
 
-// 3. PUT: Update a user's details by ID (THIS WAS MISSING)
+// ==========================================
+// 3. PUT: Update user by ID (PUT /api/users/:id)
+// ==========================================
 router.put('/:id', async (req, res) => {
     try {
         const updatedUser = await User.findByIdAndUpdate(
             req.params.id, 
             req.body, 
-            { new: true, runValidators: true } // returns the newly modified document back
+            { new: true, runValidators: true }
         );
         if (!updatedUser) {
             return res.status(404).json({ error: 'User not found' });
@@ -44,7 +84,9 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// 4. DELETE: Remove a user by ID
+// ==========================================
+// 4. DELETE: Remove user by ID (DELETE /api/users/:id)
+// ==========================================
 router.delete('/:id', async (req, res) => {
     try {
         const deletedUser = await User.findByIdAndDelete(req.params.id);
