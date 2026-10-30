@@ -3,78 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Dashboard - E-Shop</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <title>Customer Dashboard - AtudTA Wet Market Platform</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            50: '#ECFDF5',
+                            100: '#D1FAE5',
+                            200: '#A7F3D0',
+                            500: '#10B981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065F46',
+                        },
+                        spink: {
+                            50: '#FFF1F6',
+                            100: '#FFE4E6',
+                            200: '#FECDD3',
+                            400: '#FB7185',
+                            600: '#E11D48',
+                            700: '#BE123C',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-light">
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="customer.html"><i class="bi bi-bag-check-fill text-primary me-2"></i>E-Shop</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item"><a class="nav-link active" href="customer.html">Home</a></li>
-                    <li class="nav-item"><a class="nav-link" href="product.html">Products</a></li>
-                    <li class="nav-item"><a class="nav-link" href="orders.html">My Orders</a></li>
-                    <li class="nav-item"><a class="nav-link" href="cart.html"><i class="bi bi-cart3"></i> Cart <span class="badge bg-primary rounded-pill">3</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="profile.html">Profile</a></li>
-                    <li class="nav-item ms-2"><a class="btn btn-outline-light btn-sm px-3" href="login.html">Logout</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+<body data-app-page="customer" class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
-    <!-- Content Area -->
-    <div class="container py-3">
-        <div class="p-4 bg-white rounded-3 shadow-sm mb-4">
-            <h2 class="fw-bold">Welcome!</h2>
-            <p class="text-muted">Track your active shipments and explore today's special deals.</p>
-        </div>
-
-        <!-- Order Status Summary -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-primary text-white p-3 rounded-circle me-3"><i class="bi bi-truck fs-4"></i></div>
-                        <div>
-                            <span class="text-muted small">Active Shipment</span>
-                            <h6 class="mb-0 text-success fw-bold">Out for Delivery (#1024)</h6>
-                        </div>
-                    </div>
+    <!-- TOP HEADER -->
+    <header class="bg-[#059669] text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-spink-400 flex items-center justify-center text-white shadow-lg text-xl font-bold">
+                    <i class="fa-solid fa-basket-shopping"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                        AtudTA <span class="text-xs px-2 py-0.5 rounded-full bg-spink-400 text-white font-semibold">Polangui</span>
+                    </h1>
+                    <p class="text-xs text-white">Local Wet Market Delivery System</p>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-warning text-dark p-3 rounded-circle me-3"><i class="bi bi-clock-history fs-4"></i></div>
-                        <div>
-                            <span class="text-muted small">Pending Items</span>
-                            <h6 class="mb-0 fw-bold">2 Orders Processing</h6>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-info text-white p-3 rounded-circle me-3"><i class="bi bi-ticket-perforated fs-4"></i></div>
-                        <div>
-                            <span class="text-muted small">Available Coupons</span>
-                            <h6 class="mb-0 fw-bold">15% OFF Next Purchase</h6>
-                        </div>
-                    </div>
+
+            <!-- Header Right Info & Session controls -->
+            <div id="headerUserInfo" class="flex items-center gap-3">
+                <span id="headerUserLabel" class="text-sm font-medium text-white hidden sm:inline">Delivery Management System</span>
+                <div id="headerAuthButtons" class="flex items-center gap-2">
+                    <!-- Dynamic Buttons Added JS -->
                 </div>
             </div>
         </div>
-    </div>
+    </header>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed top-20 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <!-- ========================================== -->
+        <!-- 1. LOGIN SCREEN                            -->
+        <!-- ========================================== -->
+
+        <section class="space-y-6">
+            <div class="bg-[#059669] text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div><h2 class="text-2xl font-black">Customer Dashboard</h2><p class="text-sm mt-1">Welcome back, <span class="userName font-bold">Customer</span>!</p></div>
+                <a href="products.html" class="bg-white text-emerald-700 font-bold px-5 py-3 rounded-xl shadow-md hover:bg-emerald-50 transition"><i class="fa-solid fa-basket-shopping mr-2"></i>Browse Products</a>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="customerIncomingOrdersPanel" class="glass-card p-5 rounded-2xl shadow-sm">
+                    <h3 class="font-bold text-sage-800 mb-3 flex items-center gap-2"><i class="fa-solid fa-truck-fast text-blue-600"></i> My Orders</h3>
+                    <div id="customerIncomingOrdersList" class="space-y-3 max-h-96 overflow-y-auto pr-1"></div>
+                </div>
+                <div id="customerReviewableOrdersPanel" class="glass-card p-5 rounded-2xl shadow-sm">
+                    <h3 class="font-bold text-sage-800 mb-3 flex items-center gap-2"><i class="fa-solid fa-star text-amber-500"></i> Orders Ready to Review</h3>
+                    <div id="customerReviewableOrdersList" class="space-y-3 max-h-96 overflow-y-auto pr-1"></div>
+                </div>
+                <div id="customerCompletedOrdersPanel" class="glass-card p-5 rounded-2xl shadow-sm md:col-span-2">
+                    <h3 class="font-bold text-sage-800 mb-3 flex items-center gap-2"><i class="fa-solid fa-circle-check text-emerald-600"></i> My Completed Orders</h3>
+                    <p class="text-sm text-slate-500 mb-3">Orders marked delivered appear here. Select an order to view its details and delivery photos.</p>
+                    <div id="customerCompletedOrdersList" class="space-y-3 max-h-96 overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+        <!-- PROFILE MODAL -->
+        <div id="profileModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+            <div class="glass-card w-full max-w-lg p-6 rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                <button type="button" onclick="toggleProfileModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold" aria-label="Close profile">✕</button>
+                <h2 class="text-2xl font-bold text-sage-800 mb-5">My Profile</h2>
+                <div class="flex flex-col items-center mb-6">
+                    <img id="profilePicture" alt="Profile picture" class="w-28 h-28 rounded-full object-cover border-4 border-sage-100 hidden">
+                    <div id="profilePicturePlaceholder" class="w-28 h-28 rounded-full bg-sage-100 text-sage-600 flex items-center justify-center text-4xl">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <label for="profilePictureInput" class="mt-3 cursor-pointer text-sm font-bold text-spink-600 hover:underline">Choose Profile Picture</label>
+                    <input id="profilePictureInput" type="file" accept="image/*" class="hidden">
+                    <p class="mt-1 text-xs text-slate-500">Image file up to 1 MB</p>
+                </div>
+                <dl class="space-y-3 text-sm">
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Name</dt><dd id="profileName" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Role</dt><dd id="profileRole" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Birthdate</dt><dd id="profileBirthdate" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Contact</dt><dd id="profileContact" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Email</dt><dd id="profileEmail" class="text-right text-slate-800 break-all"></dd></div>
+                    <div id="profileRoleDetails" class="space-y-3"></div>
+                </dl>
+                <div id="profileAddressEditButton" class="hidden mt-5">
+                    <button type="button" onclick="openProfileAddressEditor()"
+                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Address
+                    </button>
+                </div>
+                <form id="profileAddressEditor" class="hidden mt-5 space-y-4" onsubmit="saveProfileAddress(event)">
+                    <h3 class="font-bold text-slate-800">Edit Delivery Address</h3>
+                    <div>
+                        <label for="profileAddress" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Complete Address</label>
+                        <input id="profileAddress" type="text" autocomplete="street-address" required
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sage-500 focus:outline-none transition">
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" onclick="closeProfileAddressEditor()"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition">
+                            Save Address
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+    <!-- FOOTER -->
+    <footer class="bg-[#059669] text-white py-6 border-t border-[#047857] mt-12 text-center text-xs">
+        <p>&copy; 2026 AtudTA Wet Market Platform. Polangui, Albay Philippines. All Rights Reserved.</p>
+    </footer>
+
+    <!-- JAVASCRIPT APP ENGINE -->
+    <script src="app.js" defer></script>
 </body>
 </html>
-cdn.jsdelivr.net
-cdn.jsdelivr.net

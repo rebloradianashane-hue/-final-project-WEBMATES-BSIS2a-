@@ -3,82 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rider Portal - E-Shop Logistics</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <title>Rider Dashboard - AtudTA Wet Market Platform</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            50: '#ECFDF5',
+                            100: '#D1FAE5',
+                            200: '#A7F3D0',
+                            500: '#10B981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065F46',
+                        },
+                        spink: {
+                            50: '#FFF1F6',
+                            100: '#FFE4E6',
+                            200: '#FECDD3',
+                            400: '#FB7185',
+                            600: '#E11D48',
+                            700: '#BE123C',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-light">
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="rider.html"><i class="bi bi-bicycle me-2"></i>E-Shop Express</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#riderNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="riderNav">
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item"><a class="nav-link active" href="rider.html">Active Deliveries</a></li>
-                    <li class="nav-item"><a class="nav-link" href="rider-earnings.html">My Earnings</a></li>
-                    <li class="nav-item"><a class="nav-link" href="rider-history.html">History</a></li>
-                    <li class="nav-item ms-2"><a class="btn btn-dark btn-sm px-3" href="login.html">Logout</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+<body data-app-page="rider" class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
-    <!-- Rider Content -->
-    <div class="container py-3">
-        <!-- Status Switch Banner -->
-        <div class="p-3 bg-white rounded-3 shadow-sm mb-4 d-flex justify-content-between align-items-center">
-            <div>
-                <h5 class="fw-bold mb-0">Rider Status</h5>
-                <span class="text-success small"><i class="bi bi-circle-fill fs-6 me-1"></i> Online & Accepting Orders</span>
-            </div>
-            <div class="form-check form-switch">
-                <input class="form-check-input fs-4" type="checkbox" role="switch" id="dutySwitch" checked>
-            </div>
-        </div>
-
-        <!-- Rider Stats -->
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-md-4">
-                <div class="card border-0 shadow-sm p-3 text-center">
-                    <span class="text-muted small">Today's Payout</span>
-                    <h4 class="fw-bold text-success mb-0">$84.50</h4>
+    <!-- TOP HEADER -->
+    <header class="bg-[#059669] text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-spink-400 flex items-center justify-center text-white shadow-lg text-xl font-bold">
+                    <i class="fa-solid fa-basket-shopping"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                        AtudTA <span class="text-xs px-2 py-0.5 rounded-full bg-spink-400 text-white font-semibold">Polangui</span>
+                    </h1>
+                    <p class="text-xs text-white">Local Wet Market Delivery System</p>
                 </div>
             </div>
-            <div class="col-6 col-md-4">
-                <div class="card border-0 shadow-sm p-3 text-center">
-                    <span class="text-muted small">Completed</span>
-                    <h4 class="fw-bold text-primary mb-0">7 Orders</h4>
-                </div>
-            </div>
-            <div class="col-12 col-md-4">
-                <div class="card border-0 shadow-sm p-3 text-center">
-                    <span class="text-muted small">Rating</span>
-                    <h4 class="fw-bold text-warning mb-0">4.9 ★</h4>
+
+            <!-- Header Right Info & Session controls -->
+            <div id="headerUserInfo" class="flex items-center gap-3">
+                <span id="headerUserLabel" class="text-sm font-medium text-white hidden sm:inline">Delivery Management System</span>
+                <div id="headerAuthButtons" class="flex items-center gap-2">
+                    <!-- Dynamic Buttons Added JS -->
                 </div>
             </div>
         </div>
+    </header>
 
-        <!-- Assigned Delivery Task Card -->
-        <h5 class="fw-bold mb-3">Current Assigned Task</h5>
-        <div class="card border-0 shadow-sm p-3 mb-3 border-start border-4 border-primary">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <span class="badge bg-primary">Order #ORD-8821</span>
-                <span class="text-muted small"><i class="bi bi-geo-alt-fill text-danger me-1"></i> 2.4 km away</span>
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed top-20 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <!-- ========================================== -->
+        <!-- 1. LOGIN SCREEN                            -->
+        <!-- ========================================== -->
+
+        <section id="riderPage" class="space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-2xl font-bold text-sage-800">🏍️ SwiftCourier Rider App</h2>
+                <p class="text-sm text-slate-500 mt-1">Delivery Partner: <strong class="userName text-blue-600">Rider</strong></p>
             </div>
-            <div class="mb-3">
-                <p class="mb-1"><strong>Pickup:</strong> Tech Store, Bay 3, Central Mall</p>
-                <p class="mb-0"><strong>Dropoff:</strong> 742 Evergreen Terrace, Unit 4B</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-blue-500"><p class="text-xs font-bold text-slate-400 uppercase">Delivery Jobs</p><p id="riderMetricAssigned" class="text-2xl font-black text-blue-600">0</p></div>
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-emerald-500"><p class="text-xs font-bold text-slate-400 uppercase">Completed</p><p id="riderMetricCompleted" class="text-2xl font-black text-emerald-600">0</p></div>
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-500"><p class="text-xs font-bold text-slate-400 uppercase">COD Money Collected</p><p id="riderMetricCOD" class="text-2xl font-black text-amber-600">₱0.00</p></div>
             </div>
-            <div class="d-grid gap-2 d-md-flex">
-                <button class="btn btn-outline-secondary btn-sm me-md-2"><i class="bi bi-telephone-fill me-1"></i> Call Customer</button>
-                <button class="btn btn-success btn-sm"><i class="bi bi-check-circle-fill me-1"></i> Mark Delivered</button>
+            <a href="delivery.html" class="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition"><i class="fa-solid fa-route"></i> Open Delivery Queue</a>
+            <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
+                <h3 class="font-bold text-lg text-sage-800 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-emerald-600"></i> Completed Deliveries
+                </h3>
+                <p class="text-sm text-slate-500">All customer orders marked delivered appear here. Select an order to view its details and delivery photos.</p>
+                <div id="riderCompletedDeliveries" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- JS Populated -->
+                </div>
+            </div>
+        </section>
+    </main>
+        <!-- PROFILE MODAL -->
+        <div id="profileModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+            <div class="glass-card w-full max-w-lg p-6 rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                <button type="button" onclick="toggleProfileModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold" aria-label="Close profile">✕</button>
+                <h2 class="text-2xl font-bold text-sage-800 mb-5">My Profile</h2>
+                <div class="flex flex-col items-center mb-6">
+                    <img id="profilePicture" alt="Profile picture" class="w-28 h-28 rounded-full object-cover border-4 border-sage-100 hidden">
+                    <div id="profilePicturePlaceholder" class="w-28 h-28 rounded-full bg-sage-100 text-sage-600 flex items-center justify-center text-4xl">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <label for="profilePictureInput" class="mt-3 cursor-pointer text-sm font-bold text-spink-600 hover:underline">Choose Profile Picture</label>
+                    <input id="profilePictureInput" type="file" accept="image/*" class="hidden">
+                    <p class="mt-1 text-xs text-slate-500">Image file up to 1 MB</p>
+                </div>
+                <dl class="space-y-3 text-sm">
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Name</dt><dd id="profileName" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Role</dt><dd id="profileRole" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Birthdate</dt><dd id="profileBirthdate" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Contact</dt><dd id="profileContact" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Email</dt><dd id="profileEmail" class="text-right text-slate-800 break-all"></dd></div>
+                    <div id="profileRoleDetails" class="space-y-3"></div>
+                </dl>
+                <div id="profileAddressEditButton" class="hidden mt-5">
+                    <button type="button" onclick="openProfileAddressEditor()"
+                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Address
+                    </button>
+                </div>
+                <form id="profileAddressEditor" class="hidden mt-5 space-y-4" onsubmit="saveProfileAddress(event)">
+                    <h3 class="font-bold text-slate-800">Edit Delivery Address</h3>
+                    <div>
+                        <label for="profileAddress" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Complete Address</label>
+                        <input id="profileAddress" type="text" autocomplete="street-address" required
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sage-500 focus:outline-none transition">
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" onclick="closeProfileAddressEditor()"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition">
+                            Save Address
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- FOOTER -->
+    <footer class="bg-[#059669] text-white py-6 border-t border-[#047857] mt-12 text-center text-xs">
+        <p>&copy; 2026 AtudTA Wet Market Platform. Polangui, Albay Philippines. All Rights Reserved.</p>
+    </footer>
+
+    <!-- JAVASCRIPT APP ENGINE -->
+    <script src="app.js" defer></script>
 </body>
 </html>
