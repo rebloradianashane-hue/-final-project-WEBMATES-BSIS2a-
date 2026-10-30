@@ -3,1239 +3,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Dashboard - E-Shop Hub</title>
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Chart.js for Analytics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --primary-color: #2563eb;
-            --sidebar-width: 250px;
-        }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: #f8fafc;
-            color: #1e293b;
-        }
-        .nav-link {
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .nav-link.active {
-            font-weight: 600;
-        }
-        .card-metric {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .card-metric:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
-        }
-        .view-section {
-            display: none;
-        }
-        .view-section.active-view {
-            display: block;
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .toast-container {
-            z-index: 1090;
-        }
-        .product-img-placeholder {
-            width: 42px;
-            height: 42px;
-            border-radius: 8px;
-            background-color: #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #64748b;
-            font-size: 1.2rem;
-        }
-        .printable-label {
-            border: 2px dashed #000;
-            padding: 20px;
-            background: #fff;
-            font-family: 'Courier New', Courier, monospace;
-        }
-        /* Auth Overlay Styling */
-        #auth-screen {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        }
-        .auth-card {
-            border-radius: 1rem;
-            max-width: 420px;
-            width: 100%;
-        }
-    </style>
-</head>
-<body class="bg-light d-flex flex-column min-vh-100">
+    <title>Vendor Dashboard - AtudTA Wet Market Platform</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- ==================== AUTH SCREEN (LOGIN) ==================== -->
-    <div id="auth-screen" class="d-flex align-items-center justify-content-center p-3">
-        <div class="card auth-card shadow-lg border-0 bg-white p-4 p-md-5">
-            <div class="text-center mb-4">
-                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle p-3 mb-3" style="width: 64px; height: 64px;">
-                    <i class="bi bi-shop fs-2"></i>
-                </div>
-                <h3 class="fw-bold text-dark mb-1">E-Shop Vendor Hub</h3>
-                <p class="text-muted small mb-0">Sign in to manage your store and orders</p>
-            </div>
-
-            <form id="loginForm" onsubmit="handleLogin(event)">
-                <div class="mb-3">
-                    <label class="form-label text-secondary small fw-bold">Email Address</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-envelope"></i></span>
-                        <input type="email" id="login-email" class="form-control border-start-0" value="vendor@techportal.io" required placeholder="vendor@eshop.com">
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label text-secondary small fw-bold">Password</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-lock"></i></span>
-                        <input type="password" id="login-password" class="form-control border-start-0" value="password123" required placeholder="••••••••">
-                    </div>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div class="form-check mb-0">
-                        <input class="form-check-input" type="checkbox" id="rememberMe" checked>
-                        <label class="form-check-label small text-muted" for="rememberMe">Remember me</label>
-                    </div>
-                    <a href="#" class="small text-primary text-decoration-none" onclick="showToast('Password reset link sent to demo email!')">Forgot password?</a>
-                </div>
-                <button type="submit" class="btn btn-primary w-full py-2 fw-semibold w-100 mb-3">
-                    <i class="bi bi-box-arrow-in-right me-1"></i> Sign In to Store
-                </button>
-            </form>
-
-            <div class="border-top pt-3 text-center">
-                <span class="text-muted small d-block mb-2">Quick Demo Credentials:</span>
-                <button class="btn btn-sm btn-outline-secondary w-100" onclick="fillDemoCredentials()">
-                    <i class="bi bi-person-badge me-1"></i> Quick Fill (Tech Store Vendor)
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== MAIN DASHBOARD LAYOUT ==================== -->
-    <div id="app-layout" class="d-none flex-column min-vh-100">
-
-        <!-- Top Navigation Bar -->
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
-            <div class="container">
-                <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#" onclick="switchView('dashboard')">
-                    <i class="bi bi-shop text-warning fs-4"></i>
-                    <span>E-Shop Vendor Hub</span>
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#vendorNav">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="vendorNav">
-                    <ul class="navbar-nav me-auto ms-lg-4 align-items-lg-center">
-                        <li class="nav-item">
-                            <a class="nav-link nav-tab active" id="tab-dashboard" onclick="switchView('dashboard')">
-                                <i class="bi bi-speedometer2 me-1"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-tab" id="tab-inventory" onclick="switchView('inventory')">
-                                <i class="bi bi-box-seam me-1"></i> My Inventory
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-tab" id="tab-orders" onclick="switchView('orders')">
-                                <i class="bi bi-cart-check me-1"></i> Store Orders 
-                                <span class="badge bg-danger rounded-pill ms-1" id="nav-pending-badge">0</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-tab" id="tab-payouts" onclick="switchView('payouts')">
-                                <i class="bi bi-wallet2 me-1"></i> Earnings & Payouts
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-tab" id="tab-settings" onclick="switchView('settings')">
-                                <i class="bi bi-gear me-1"></i> Settings
-                            </a>
-                        </li>
-                    </ul>
-
-                    <!-- User Profile & Working Logout -->
-                    <div class="d-flex align-items-center gap-3 pt-2 pt-lg-0 border-top border-lg-0 mt-2 mt-lg-0">
-                        <div class="d-flex align-items-center text-white me-2">
-                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 fw-bold" style="width: 36px; height: 36px;" id="nav-avatar">
-                                TS
-                            </div>
-                            <div class="lh-1">
-                                <div class="fw-bold small" id="nav-user-name">Tech Store Vendor</div>
-                                <span class="text-muted extra-small" style="font-size: 0.75rem;">Online</span>
-                            </div>
-                        </div>
-                        <button class="btn btn-outline-light btn-sm px-3" onclick="handleLogout()">
-                            <i class="bi bi-box-arrow-right me-1"></i> Logout
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </nav>
-
-        <!-- Main Container -->
-        <main class="container py-4 flex-grow-1">
-
-            <!-- Banner Header -->
-            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-4 pb-2 border-bottom">
-                <div class="mb-2 mb-sm-0">
-                    <h2 class="fw-bold mb-0 text-dark" id="vendor-store-name">Tech Store Portal</h2>
-                    <div class="d-flex align-items-center gap-2 mt-1">
-                        <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i>Verified Merchant</span>
-                        <span class="text-muted small"><i class="bi bi-geo-alt me-1"></i>ID: #VND-99401</span>
-                    </div>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="resetDemoData()">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Demo
-                    </button>
-                    <button class="btn btn-primary" onclick="openAddProductModal()">
-                        <i class="bi bi-plus-lg me-1"></i> Add New Product
-                    </button>
-                </div>
-            </div>
-
-            <!-- Metrics Cards -->
-            <div class="row g-3 mb-4">
-                <div class="col-6 col-md-3">
-                    <div class="card border-0 shadow-sm p-3 text-center card-metric bg-white">
-                        <span class="text-muted small fw-medium">Total Revenue</span>
-                        <h3 class="fw-bold text-primary mb-0 mt-1" id="metric-revenue">$0.00</h3>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="card border-0 shadow-sm p-3 text-center card-metric bg-white">
-                        <span class="text-muted small fw-medium">Orders to Ship</span>
-                        <h3 class="fw-bold text-warning mb-0 mt-1" id="metric-pending-orders">0 Items</h3>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="card border-0 shadow-sm p-3 text-center card-metric bg-white">
-                        <span class="text-muted small fw-medium">Total Products</span>
-                        <h3 class="fw-bold text-dark mb-0 mt-1" id="metric-products-count">0</h3>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="card border-0 shadow-sm p-3 text-center card-metric bg-white">
-                        <span class="text-muted small fw-medium">Store Rating</span>
-                        <h3 class="fw-bold text-success mb-0 mt-1">4.8 / 5.0 ★</h3>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== VIEW 1: DASHBOARD ==================== -->
-            <div id="view-dashboard" class="view-section active-view">
-                <div class="row g-4">
-                    <!-- Recent Orders Preview -->
-                    <div class="col-lg-8">
-                        <div class="card border-0 shadow-sm p-3 h-100">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Orders Needing Fulfillment</h5>
-                                <button class="btn btn-link btn-sm text-decoration-none" onclick="switchView('orders')">View All</button>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table align-middle table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Order ID</th>
-                                            <th>Customer</th>
-                                            <th>Item Details</th>
-                                            <th>Status</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="dashboard-orders-table">
-                                        <!-- Dynamic content injected here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Earnings Quick Graph & Low Stock Alert -->
-                    <div class="col-lg-4">
-                        <div class="card border-0 shadow-sm p-3 mb-4">
-                            <h6 class="fw-bold mb-3"><i class="bi bi-graph-up-arrow me-2 text-success"></i>Revenue Overview</h6>
-                            <canvas id="miniRevenueChart" height="150"></canvas>
-                        </div>
-
-                        <div class="card border-0 shadow-sm p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="fw-bold mb-0"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Inventory Alerts</h6>
-                                <span class="badge bg-danger" id="low-stock-count-badge">0</span>
-                            </div>
-                            <div id="low-stock-list" class="list-group list-group-flush small">
-                                <!-- Injected low stock alerts -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== VIEW 2: MY INVENTORY ==================== -->
-            <div id="view-inventory" class="view-section">
-                <div class="card border-0 shadow-sm p-4">
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-                        <h5 class="fw-bold mb-0"><i class="bi bi-boxes me-2 text-primary"></i>Product Inventory</h5>
-                        <div class="d-flex flex-wrap gap-2">
-                            <input type="text" id="inventory-search" class="form-control form-control-sm" style="max-width: 220px;" placeholder="Search SKU or Name..." oninput="renderInventoryTable()">
-                            <select id="inventory-category-filter" class="form-select form-select-sm" style="max-width: 160px;" onchange="renderInventoryTable()">
-                                <option value="All">All Categories</option>
-                                <option value="Electronics">Electronics</option>
-                                <option value="Audio">Audio</option>
-                                <option value="Accessories">Accessories</option>
-                                <option value="Wearables">Wearables</option>
-                            </select>
-                            <select id="inventory-stock-filter" class="form-select form-select-sm" style="max-width: 150px;" onchange="renderInventoryTable()">
-                                <option value="All">All Stock Status</option>
-                                <option value="In Stock">In Stock</option>
-                                <option value="Low Stock">Low Stock (&lt; 10)</option>
-                                <option value="Out of Stock">Out of Stock</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table align-middle table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Product</th>
-                                    <th>SKU</th>
-                                    <th>Category</th>
-                                    <th>Price</th>
-                                    <th>Stock Quantity</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventory-table-body">
-                                <!-- Dynamic rendering -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== VIEW 3: STORE ORDERS ==================== -->
-            <div id="view-orders" class="view-section">
-                <div class="card border-0 shadow-sm p-4">
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-                        <h5 class="fw-bold mb-0"><i class="bi bi-receipt me-2 text-primary"></i>Store Orders Management</h5>
-                        <div class="btn-group btn-group-sm" role="group" id="order-status-filters">
-                            <button type="button" class="btn btn-outline-primary active" onclick="filterOrders('All', this)">All</button>
-                            <button type="button" class="btn btn-outline-primary" onclick="filterOrders('Ready to Pack', this)">Ready to Pack</button>
-                            <button type="button" class="btn btn-outline-primary" onclick="filterOrders('Shipped', this)">Shipped</button>
-                            <button type="button" class="btn btn-outline-primary" onclick="filterOrders('Delivered', this)">Delivered</button>
-                        </div>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table align-middle table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Order ID</th>
-                                    <th>Date</th>
-                                    <th>Customer</th>
-                                    <th>Items Ordered</th>
-                                    <th>Total</th>
-                                    <th>Status</th>
-                                    <th>Fulfillment Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="orders-table-body">
-                                <!-- Dynamic rendering -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== VIEW 4: EARNINGS & PAYOUTS ==================== -->
-            <div id="view-payouts" class="view-section">
-                <div class="row g-4 mb-4">
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm p-4 text-center bg-white h-100">
-                            <span class="text-muted small">Available for Payout</span>
-                            <h2 class="fw-bold text-success my-2" id="payout-available-balance">$0.00</h2>
-                            <button class="btn btn-success btn-sm mt-2" onclick="openPayoutModal()">
-                                <i class="bi bi-arrow-up-right-circle me-1"></i> Request Payout
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm p-4 text-center bg-white h-100">
-                            <span class="text-muted small">Pending Clearance</span>
-                            <h2 class="fw-bold text-warning my-2" id="payout-pending-balance">$0.00</h2>
-                            <span class="small text-muted">From orders in transit</span>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm p-4 text-center bg-white h-100">
-                            <span class="text-muted small">Lifetime Earnings</span>
-                            <h2 class="fw-bold text-primary my-2" id="payout-lifetime-balance">$0.00</h2>
-                            <span class="small text-muted">Total net payouts received</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Revenue Chart & Payout History -->
-                <div class="row g-4">
-                    <div class="col-lg-7">
-                        <div class="card border-0 shadow-sm p-4 h-100">
-                            <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Monthly Sales Trend</h5>
-                            <canvas id="mainSalesChart" height="220"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-5">
-                        <div class="card border-0 shadow-sm p-4 h-100">
-                            <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2"></i>Payout History</h5>
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Amount</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="payout-history-table">
-                                        <!-- Injected payouts -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== VIEW 5: SETTINGS ==================== -->
-            <div id="view-settings" class="view-section">
-                <div class="card border-0 shadow-sm p-4 mx-auto" style="max-width: 700px;">
-                    <h5 class="fw-bold mb-4"><i class="bi bi-sliders me-2 text-primary"></i>Store & Payout Settings</h5>
-                    <form id="settingsForm" onsubmit="saveSettings(event)">
-                        <div class="mb-3">
-                            <label class="form-label font-weight-bold">Store Name</label>
-                            <input type="text" id="setting-store-name" class="form-control" value="Tech Store Portal" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Support Email</label>
-                            <input type="email" id="setting-store-email" class="form-control" value="vendor@techportal.io" required>
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Bank Name</label>
-                                <input type="text" id="setting-bank-name" class="form-control" value="Chase Bank" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Account Number</label>
-                                <input type="text" id="setting-account-num" class="form-control" value="**** **** 8839" required>
-                            </div>
-                        </div>
-                        <div class="form-check form-switch mb-4">
-                            <input class="form-check-input" type="checkbox" id="setting-notifications" checked>
-                            <label class="form-check-label" for="setting-notifications">Receive email alerts for new orders</label>
-                        </div>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Save Preferences</button>
-                    </form>
-                </div>
-            </div>
-
-        </main>
-
-        <!-- Footer -->
-        <footer class="bg-white border-top py-3 mt-auto">
-            <div class="container text-center text-muted small">
-                &copy; 2026 E-Shop Vendor Hub. All rights reserved.
-            </div>
-        </footer>
-    </div>
-
-    <!-- ==================== MODALS ==================== -->
-
-    <!-- Add/Edit Product Modal -->
-    <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title fw-bold" id="productModalTitle">Add New Product</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="productForm" onsubmit="handleProductSubmit(event)">
-                    <div class="modal-body p-4">
-                        <input type="hidden" id="prod-id">
-                        <div class="mb-3">
-                            <label class="form-label">Product Name *</label>
-                            <input type="text" class="form-control" id="prod-name" required placeholder="e.g. Wireless Ergonomic Mouse">
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">SKU *</label>
-                                <input type="text" class="form-control" id="prod-sku" required placeholder="e.g. LOG-M-01">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Category *</label>
-                                <select class="form-select" id="prod-category" required>
-                                    <option value="Electronics">Electronics</option>
-                                    <option value="Audio">Audio</option>
-                                    <option value="Accessories">Accessories</option>
-                                    <option value="Wearables">Wearables</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Price ($) *</label>
-                                <input type="number" step="0.01" min="0" class="form-control" id="prod-price" required placeholder="29.99">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Stock Quantity *</label>
-                                <input type="number" min="0" class="form-control" id="prod-stock" required placeholder="50">
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Icon Symbol</label>
-                            <select class="form-select" id="prod-icon">
-                                <option value="bi-headphones">Headphones Icon</option>
-                                <option value="bi-laptop">Laptop Icon</option>
-                                <option value="bi-smartwatch">Smartwatch Icon</option>
-                                <option value="bi-mouse">Mouse/Peripheral Icon</option>
-                                <option value="bi-plug">Plug/Cable Icon</option>
-                                <option value="bi-box-seam">Generic Box</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" id="prod-desc" rows="2" placeholder="Brief details about product..."></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="prod-submit-btn">Save Product</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Shipping Label Modal -->
-    <div class="modal fade" id="shippingLabelModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-printer me-2"></i>Shipping Label Preview</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4" id="shipping-label-body">
-                    <!-- Label Content Injected Dynamically -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" onclick="triggerPrintLabel()"><i class="bi bi-printer me-1"></i> Print</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Payout Request Modal -->
-    <div class="modal fade" id="payoutModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold">Request Balance Withdrawal</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="payoutForm" onsubmit="handlePayoutSubmit(event)">
-                    <div class="modal-body p-4">
-                        <p class="text-muted small">Funds will be transferred to your registered bank account within 1-2 business days.</p>
-                        <div class="mb-3">
-                            <label class="form-label">Amount to Transfer ($)</label>
-                            <input type="number" step="0.01" class="form-control" id="payout-request-amount" required>
-                        </div>
-                        <div class="p-3 bg-light rounded mb-3 small">
-                            <div class="d-flex justify-content-between">
-                                <span>Destination Bank:</span>
-                                <strong id="modal-bank-name">Chase Bank</strong>
-                            </div>
-                            <div class="d-flex justify-content-between mt-1">
-                                <span>Account Number:</span>
-                                <strong id="modal-account-num">**** 8839</strong>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success">Confirm Payout</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notification Container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="liveToast" class="toast align-items-center text-white bg-dark border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body" id="toast-message">
-                    Action executed successfully.
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Application Script -->
     <script>
-        // Initial Data Sets
-        const initialProducts = [
-            { id: 'prod-1', name: 'Wireless Headphones', sku: 'AUDIO-WH-001', category: 'Audio', price: 99.99, stock: 18, icon: 'bi-headphones', desc: 'Active noise cancelling wireless headphones.' },
-            { id: 'prod-2', name: 'Ultra-Slim Gaming Laptop', sku: 'TECH-LP-099', category: 'Electronics', price: 1299.00, stock: 4, icon: 'bi-laptop', desc: '15-inch high performance gaming laptop.' },
-            { id: 'prod-3', name: 'Smart Fitness Watch', sku: 'WEAR-SW-202', category: 'Wearables', price: 149.50, stock: 25, icon: 'bi-smartwatch', desc: 'Heart-rate monitor and step counter.' },
-            { id: 'prod-4', name: 'Ergonomic Vertical Mouse', sku: 'ACC-MS-110', category: 'Accessories', price: 34.99, stock: 0, icon: 'bi-mouse', desc: 'Reduces wrist strain during long hours.' },
-            { id: 'prod-5', name: 'USB-C Fast Charging Hub', sku: 'ACC-HUB-05', category: 'Accessories', price: 24.99, stock: 50, icon: 'bi-plug', desc: '7-in-1 multi port adapter hub.' }
-        ];
-
-        const initialOrders = [
-            { id: 'ORD-8821', customer: 'Jane Doe', address: '123 Maple St, New York, NY', items: 'Wireless Headphones (x1)', total: 99.99, date: '2026-10-24', status: 'Ready to Pack' },
-            { id: 'ORD-8822', customer: 'Robert Smith', address: '456 Oak Ave, San Francisco, CA', items: 'Smart Fitness Watch (x1)', total: 149.50, date: '2026-10-24', status: 'Ready to Pack' },
-            { id: 'ORD-8820', customer: 'Alice Johnson', address: '789 Pine Rd, Chicago, IL', items: 'USB-C Fast Charging Hub (x2)', total: 49.98, date: '2026-10-23', status: 'Shipped' },
-            { id: 'ORD-8819', customer: 'Michael Brown', address: '321 Elm St, Austin, TX', items: 'Ultra-Slim Gaming Laptop (x1)', total: 1299.00, date: '2026-10-22', status: 'Delivered' }
-        ];
-
-        const initialPayouts = [
-            { id: 'PAY-1001', date: '2026-10-15', amount: 2450.00, status: 'Completed' },
-            { id: 'PAY-1000', date: '2026-10-01', amount: 1800.00, status: 'Completed' }
-        ];
-
-        // State Management
-        let isAuthenticated = false;
-        let currentUser = null;
-        let products = [];
-        let orders = [];
-        let payouts = [];
-        let storeSettings = {
-            name: "Tech Store Portal",
-            email: "vendor@techportal.io",
-            bankName: "Chase Bank",
-            accountNum: "**** **** 8839"
-        };
-        let productModal, shippingModal, payoutModal, toastBS;
-        let miniChartInstance = null;
-        let mainChartInstance = null;
-
-        // On Page Initialization
-        window.addEventListener('DOMContentLoaded', () => {
-            productModal = new bootstrap.Modal(document.getElementById('productModal'));
-            shippingModal = new bootstrap.Modal(document.getElementById('shippingLabelModal'));
-            payoutModal = new bootstrap.Modal(document.getElementById('payoutModal'));
-            toastBS = new bootstrap.Toast(document.getElementById('liveToast'));
-
-            loadLocalStorageData();
-            checkAuthState();
-        });
-
-        // Local Storage Sync
-        function loadLocalStorageData() {
-            if (!localStorage.getItem('vendor_products')) {
-                localStorage.setItem('vendor_products', JSON.stringify(initialProducts));
-            }
-            if (!localStorage.getItem('vendor_orders')) {
-                localStorage.setItem('vendor_orders', JSON.stringify(initialOrders));
-            }
-            if (!localStorage.getItem('vendor_payouts')) {
-                localStorage.setItem('vendor_payouts', JSON.stringify(initialPayouts));
-            }
-            if (!localStorage.getItem('vendor_settings')) {
-                localStorage.setItem('vendor_settings', JSON.stringify(storeSettings));
-            }
-
-            products = JSON.parse(localStorage.getItem('vendor_products'));
-            orders = JSON.parse(localStorage.getItem('vendor_orders'));
-            payouts = JSON.parse(localStorage.getItem('vendor_payouts'));
-            storeSettings = JSON.parse(localStorage.getItem('vendor_settings'));
-
-            syncSettingsUI();
-        }
-
-        function saveData() {
-            localStorage.setItem('vendor_products', JSON.stringify(products));
-            localStorage.setItem('vendor_orders', JSON.stringify(orders));
-            localStorage.setItem('vendor_payouts', JSON.stringify(payouts));
-            localStorage.setItem('vendor_settings', JSON.stringify(storeSettings));
-            refreshDashboardViews();
-        }
-
-        function syncSettingsUI() {
-            document.getElementById('vendor-store-name').innerText = storeSettings.name;
-            document.getElementById('setting-store-name').value = storeSettings.name;
-            document.getElementById('setting-store-email').value = storeSettings.email;
-            document.getElementById('setting-bank-name').value = storeSettings.bankName;
-            document.getElementById('setting-account-num').value = storeSettings.accountNum;
-            document.getElementById('modal-bank-name').innerText = storeSettings.bankName;
-            document.getElementById('modal-account-num').innerText = storeSettings.accountNum;
-            document.getElementById('nav-user-name').innerText = storeSettings.name;
-        }
-
-        // ==================== AUTHENTICATION ENGINE ====================
-        function checkAuthState() {
-            const savedSession = localStorage.getItem('vendor_auth_user');
-            if (savedSession) {
-                isAuthenticated = true;
-                currentUser = JSON.parse(savedSession);
-                showDashboardApp();
-            } else {
-                isAuthenticated = false;
-                currentUser = null;
-                showLoginScreen();
-            }
-        }
-
-        function handleLogin(e) {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            currentUser = {
-                email: email,
-                name: storeSettings.name,
-                loginTime: new Date().toISOString()
-            };
-            
-            localStorage.setItem('vendor_auth_user', JSON.stringify(currentUser));
-            isAuthenticated = true;
-
-            showToast("Welcome back! Signed in successfully.");
-            showDashboardApp();
-        }
-
-        function handleLogout() {
-            localStorage.removeItem('vendor_auth_user');
-            isAuthenticated = false;
-            currentUser = null;
-            
-            showToast("Logged out successfully.");
-            showLoginScreen();
-        }
-
-        function fillDemoCredentials() {
-            document.getElementById('login-email').value = 'vendor@techportal.io';
-            document.getElementById('login-password').value = 'password123';
-        }
-
-        function showLoginScreen() {
-            document.getElementById('auth-screen').classList.remove('d-none');
-            document.getElementById('app-layout').classList.add('d-none');
-            document.getElementById('app-layout').classList.remove('d-flex');
-        }
-
-        function showDashboardApp() {
-            document.getElementById('auth-screen').classList.add('d-none');
-            document.getElementById('app-layout').classList.remove('d-none');
-            document.getElementById('app-layout').classList.add('d-flex');
-
-            refreshDashboardViews();
-            if (!miniChartInstance) {
-                initCharts();
-            }
-        }
-
-        // ==================== VIEW SWITCHING ====================
-        function switchView(viewName) {
-            if (!isAuthenticated) return showLoginScreen();
-
-            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-            const activeTab = document.getElementById(`tab-${viewName}`);
-            if (activeTab) activeTab.classList.add('active');
-
-            document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active-view'));
-            const targetView = document.getElementById(`view-${viewName}`);
-            if (targetView) targetView.classList.add('active-view');
-        }
-
-        function resetDemoData() {
-            if (confirm("Reset all store data back to default demo state?")) {
-                localStorage.removeItem('vendor_products');
-                localStorage.removeItem('vendor_orders');
-                localStorage.removeItem('vendor_payouts');
-                localStorage.removeItem('vendor_settings');
-                loadLocalStorageData();
-                refreshDashboardViews();
-                showToast("Demo data fully restored!");
-            }
-        }
-
-        function refreshDashboardViews() {
-            updateMetrics();
-            renderDashboardOrdersTable();
-            renderLowStockAlerts();
-            renderInventoryTable();
-            renderOrdersTable();
-            renderPayoutsSection();
-            if (miniChartInstance) updateCharts();
-        }
-
-        function showToast(message) {
-            document.getElementById('toast-message').innerText = message;
-            toastBS.show();
-        }
-
-        // ================= METRICS & VIEWS =================
-        function updateMetrics() {
-            const totalRevenue = orders.reduce((sum, order) => sum + (order.status !== 'Cancelled' ? order.total : 0), 0);
-            document.getElementById('metric-revenue').innerText = `$${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-            const pendingOrders = orders.filter(o => o.status === 'Ready to Pack');
-            document.getElementById('metric-pending-orders').innerText = `${pendingOrders.length} Items`;
-            document.getElementById('nav-pending-badge').innerText = pendingOrders.length;
-
-            document.getElementById('metric-products-count').innerText = products.length;
-        }
-
-        function renderDashboardOrdersTable() {
-            const tbody = document.getElementById('dashboard-orders-table');
-            tbody.innerHTML = '';
-
-            const recentOrders = orders.filter(o => o.status === 'Ready to Pack').slice(0, 5);
-
-            if (recentOrders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No pending orders to fulfill!</td></tr>`;
-                return;
-            }
-
-            recentOrders.forEach(order => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="fw-bold">#${order.id}</td>
-                    <td>${order.customer}</td>
-                    <td>${order.items}</td>
-                    <td><span class="badge bg-warning text-dark">${order.status}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openShippingLabel('${order.id}')">Print Label</button>
-                        <button class="btn btn-sm btn-success" onclick="updateOrderStatus('${order.id}', 'Shipped')">Mark Shipped</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function renderLowStockAlerts() {
-            const container = document.getElementById('low-stock-list');
-            const lowStockItems = products.filter(p => p.stock < 10);
-            
-            document.getElementById('low-stock-count-badge').innerText = lowStockItems.length;
-            container.innerHTML = '';
-
-            if (lowStockItems.length === 0) {
-                container.innerHTML = `<div class="text-muted small py-2">All product stocks are healthy.</div>`;
-                return;
-            }
-
-            lowStockItems.forEach(item => {
-                const stockBadgeClass = item.stock === 0 ? 'bg-danger' : 'bg-warning text-dark';
-                const div = document.createElement('div');
-                div.className = 'list-group-item d-flex justify-content-between align-items-center px-0 py-2 border-0 border-bottom';
-                div.innerHTML = `
-                    <div class="text-truncate me-2" style="max-width: 180px;">
-                        <span class="fw-bold text-dark d-block text-truncate">${item.name}</span>
-                        <span class="text-muted extra-small">SKU: ${item.sku}</span>
-                    </div>
-                    <span class="badge ${stockBadgeClass}">${item.stock === 0 ? 'Out of Stock' : item.stock + ' left'}</span>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        // ================= INVENTORY CONTROL =================
-        function renderInventoryTable() {
-            const tbody = document.getElementById('inventory-table-body');
-            const searchVal = document.getElementById('inventory-search').value.toLowerCase();
-            const catFilter = document.getElementById('inventory-category-filter').value;
-            const stockFilter = document.getElementById('inventory-stock-filter').value;
-
-            tbody.innerHTML = '';
-
-            const filteredProducts = products.filter(p => {
-                const matchesSearch = p.name.toLowerCase().includes(searchVal) || p.sku.toLowerCase().includes(searchVal);
-                const matchesCat = catFilter === 'All' || p.category === catFilter;
-                
-                let matchesStock = true;
-                if (stockFilter === 'In Stock') matchesStock = p.stock >= 10;
-                else if (stockFilter === 'Low Stock') matchesStock = p.stock > 0 && p.stock < 10;
-                else if (stockFilter === 'Out of Stock') matchesStock = p.stock === 0;
-
-                return matchesSearch && matchesCat && matchesStock;
-            });
-
-            if (filteredProducts.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No matching inventory products found.</td></tr>`;
-                return;
-            }
-
-            filteredProducts.forEach(prod => {
-                let stockBadge = '<span class="badge bg-success">In Stock</span>';
-                if (prod.stock === 0) stockBadge = '<span class="badge bg-danger">Out of Stock</span>';
-                else if (prod.stock < 10) stockBadge = '<span class="badge bg-warning text-dark">Low Stock</span>';
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="product-img-placeholder me-2">
-                                <i class="bi ${prod.icon || 'bi-box-seam'}"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold text-dark">${prod.name}</div>
-                                <small class="text-muted">${prod.desc || 'No description'}</small>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="font-monospace small">${prod.sku}</td>
-                    <td><span class="badge bg-light text-dark border">${prod.category}</span></td>
-                    <td class="fw-bold">$${parseFloat(prod.price).toFixed(2)}</td>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <span>${prod.stock}</span>
-                            <button class="btn btn-sm btn-light border p-0 px-1" onclick="adjustStock('${prod.id}', 1)">+</button>
-                            <button class="btn btn-sm btn-light border p-0 px-1" onclick="adjustStock('${prod.id}', -1)">-</button>
-                        </div>
-                    </td>
-                    <td>${stockBadge}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEditProductModal('${prod.id}')"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct('${prod.id}')"><i class="bi bi-trash"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function adjustStock(productId, delta) {
-            const prod = products.find(p => p.id === productId);
-            if (prod) {
-                prod.stock = Math.max(0, prod.stock + delta);
-                saveData();
-            }
-        }
-
-        function openAddProductModal() {
-            document.getElementById('productForm').reset();
-            document.getElementById('prod-id').value = '';
-            document.getElementById('productModalTitle').innerText = 'Add New Product';
-            productModal.show();
-        }
-
-        function openEditProductModal(productId) {
-            const prod = products.find(p => p.id === productId);
-            if (!prod) return;
-
-            document.getElementById('prod-id').value = prod.id;
-            document.getElementById('prod-name').value = prod.name;
-            document.getElementById('prod-sku').value = prod.sku;
-            document.getElementById('prod-category').value = prod.category;
-            document.getElementById('prod-price').value = prod.price;
-            document.getElementById('prod-stock').value = prod.stock;
-            document.getElementById('prod-icon').value = prod.icon || 'bi-box-seam';
-            document.getElementById('prod-desc').value = prod.desc || '';
-
-            document.getElementById('productModalTitle').innerText = 'Edit Product';
-            productModal.show();
-        }
-
-        function handleProductSubmit(e) {
-            e.preventDefault();
-            const id = document.getElementById('prod-id').value;
-            const name = document.getElementById('prod-name').value.trim();
-            const sku = document.getElementById('prod-sku').value.trim();
-            const category = document.getElementById('prod-category').value;
-            const price = parseFloat(document.getElementById('prod-price').value);
-            const stock = parseInt(document.getElementById('prod-stock').value);
-            const icon = document.getElementById('prod-icon').value;
-            const desc = document.getElementById('prod-desc').value.trim();
-
-            if (id) {
-                const index = products.findIndex(p => p.id === id);
-                if (index !== -1) {
-                    products[index] = { id, name, sku, category, price, stock, icon, desc };
-                    showToast(`Product "${name}" updated.`);
-                }
-            } else {
-                const newProd = {
-                    id: 'prod-' + Date.now(),
-                    name, sku, category, price, stock, icon, desc
-                };
-                products.push(newProd);
-                showToast(`Product "${name}" added to inventory.`);
-            }
-
-            productModal.hide();
-            saveData();
-        }
-
-        function deleteProduct(productId) {
-            if (confirm("Are you sure you want to delete this product?")) {
-                products = products.filter(p => p.id !== productId);
-                saveData();
-                showToast("Product removed from inventory.");
-            }
-        }
-
-        // ================= ORDER PROCESSING =================
-        let activeOrderFilter = 'All';
-
-        function filterOrders(status, btnElement) {
-            activeOrderFilter = status;
-            if (btnElement) {
-                document.querySelectorAll('#order-status-filters button').forEach(b => b.classList.remove('active'));
-                btnElement.classList.add('active');
-            }
-            renderOrdersTable();
-        }
-
-        function renderOrdersTable() {
-            const tbody = document.getElementById('orders-table-body');
-            tbody.innerHTML = '';
-
-            const filteredOrders = orders.filter(o => activeOrderFilter === 'All' || o.status === activeOrderFilter);
-
-            if (filteredOrders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No orders matching "${activeOrderFilter}".</td></tr>`;
-                return;
-            }
-
-            filteredOrders.forEach(order => {
-                let badgeClass = 'bg-secondary';
-                if (order.status === 'Ready to Pack') badgeClass = 'bg-warning text-dark';
-                else if (order.status === 'Shipped') badgeClass = 'bg-info text-dark';
-                else if (order.status === 'Delivered') badgeClass = 'bg-success';
-                else if (order.status === 'Cancelled') badgeClass = 'bg-danger';
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="fw-bold">#${order.id}</td>
-                    <td class="small text-muted">${order.date}</td>
-                    <td>
-                        <div class="fw-bold">${order.customer}</div>
-                        <div class="extra-small text-muted">${order.address}</div>
-                    </td>
-                    <td>${order.items}</td>
-                    <td class="fw-bold">$${parseFloat(order.total).toFixed(2)}</td>
-                    <td><span class="badge ${badgeClass}">${order.status}</span></td>
-                    <td>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                Action
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#" onclick="openShippingLabel('${order.id}')"><i class="bi bi-printer me-2"></i>Print Shipping Label</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="#" onclick="updateOrderStatus('${order.id}', 'Ready to Pack')">Mark Ready to Pack</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="updateOrderStatus('${order.id}', 'Shipped')">Mark as Shipped</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="updateOrderStatus('${order.id}', 'Delivered')">Mark as Delivered</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-danger" href="#" onclick="updateOrderStatus('${order.id}', 'Cancelled')">Cancel Order</a></li>
-                            </ul>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function updateOrderStatus(orderId, newStatus) {
-            const order = orders.find(o => o.id === orderId);
-            if (order) {
-                order.status = newStatus;
-                saveData();
-                showToast(`Order #${orderId} set to ${newStatus}.`);
-            }
-        }
-
-        function openShippingLabel(orderId) {
-            const order = orders.find(o => o.id === orderId);
-            if (!order) return;
-
-            const container = document.getElementById('shipping-label-body');
-            container.innerHTML = `
-                <div class="printable-label">
-                    <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
-                        <strong>SHIP FROM:</strong>
-                        <span>${storeSettings.name}</span>
-                    </div>
-                    <div class="mb-3">
-                        <small class="text-muted">ORIGIN:</small><br>
-                        <strong>${storeSettings.name} Logistics Center</strong><br>
-                        100 Warehouse Way, Suite 4B<br>
-                        Dallas, TX 75201
-                    </div>
-                    <div class="border-top border-bottom py-2 mb-3">
-                        <small class="text-muted">SHIP TO:</small><br>
-                        <h5 class="fw-bold mb-1">${order.customer}</h5>
-                        <div>${order.address}</div>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>ORDER: #${order.id}</strong><br>
-                            <small>${order.items}</small>
-                        </div>
-                        <div class="text-end">
-                            <i class="bi bi-qr-code-scan" style="font-size: 2.5rem;"></i>
-                        </div>
-                    </div>
-                </div>
-            `;
-            shippingModal.show();
-        }
-
-        function triggerPrintLabel() {
-            showToast("Sending shipping label to printer...");
-            shippingModal.hide();
-        }
-
-        // ================= PAYOUTS & BALANCE =================
-        function renderPayoutsSection() {
-            const totalRevenue = orders.reduce((sum, o) => sum + (o.status !== 'Cancelled' ? o.total : 0), 0);
-            const completedPayoutsSum = payouts.filter(p => p.status === 'Completed').reduce((sum, p) => sum + p.amount, 0);
-            const pendingInTransit = orders.filter(o => o.status === 'Shipped').reduce((sum, o) => sum + o.total, 0);
-
-            const availableBalance = Math.max(0, totalRevenue - completedPayoutsSum - pendingInTransit);
-
-            document.getElementById('payout-available-balance').innerText = `$${availableBalance.toFixed(2)}`;
-            document.getElementById('payout-pending-balance').innerText = `$${pendingInTransit.toFixed(2)}`;
-            document.getElementById('payout-lifetime-balance').innerText = `$${completedPayoutsSum.toFixed(2)}`;
-
-            const tbody = document.getElementById('payout-history-table');
-            tbody.innerHTML = '';
-
-            if (payouts.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No payout history yet.</td></tr>`;
-                return;
-            }
-
-            payouts.forEach(p => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${p.date}</td>
-                    <td class="fw-bold">$${p.amount.toFixed(2)}</td>
-                    <td><span class="badge bg-success">${p.status}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function openPayoutModal() {
-            const totalRevenue = orders.reduce((sum, o) => sum + (o.status !== 'Cancelled' ? o.total : 0), 0);
-            const completedPayoutsSum = payouts.filter(p => p.status === 'Completed').reduce((sum, p) => sum + p.amount, 0);
-            const pendingInTransit = orders.filter(o => o.status === 'Shipped').reduce((sum, o) => sum + o.total, 0);
-            const availableBalance = Math.max(0, totalRevenue - completedPayoutsSum - pendingInTransit);
-
-            document.getElementById('payout-request-amount').value = availableBalance.toFixed(2);
-            document.getElementById('payout-request-amount').max = availableBalance;
-            payoutModal.show();
-        }
-
-        function handlePayoutSubmit(e) {
-            e.preventDefault();
-            const amount = parseFloat(document.getElementById('payout-request-amount').value);
-            if (amount <= 0) {
-                showToast("Invalid payout amount.");
-                return;
-            }
-
-            const newPayout = {
-                id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
-                date: new Date().toISOString().split('T')[0],
-                amount: amount,
-                status: 'Completed'
-            };
-
-            payouts.unshift(newPayout);
-            saveData();
-            payoutModal.hide();
-            showToast(`Payout of $${amount.toFixed(2)} requested!`);
-        }
-
-        // ================= SETTINGS =================
-        function saveSettings(e) {
-            e.preventDefault();
-            storeSettings.name = document.getElementById('setting-store-name').value;
-            storeSettings.email = document.getElementById('setting-store-email').value;
-            storeSettings.bankName = document.getElementById('setting-bank-name').value;
-            storeSettings.accountNum = document.getElementById('setting-account-num').value;
-
-            syncSettingsUI();
-            saveData();
-            showToast("Store settings saved!");
-        }
-
-        // ================= ANALYTICS CHARTS =================
-        function initCharts() {
-            const miniCtx = document.getElementById('miniRevenueChart').getContext('2d');
-            miniChartInstance = new Chart(miniCtx, {
-                type: 'line',
-                data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    datasets: [{
-                        label: 'Revenue ($)',
-                        data: [400, 750, 600, 1100, 950, 1300, 1500],
-                        borderColor: '#2563eb',
-                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { display: false },
-                        x: { grid: { display: false } }
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            50: '#ECFDF5',
+                            100: '#D1FAE5',
+                            200: '#A7F3D0',
+                            500: '#10B981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065F46',
+                        },
+                        spink: {
+                            50: '#FFF1F6',
+                            100: '#FFE4E6',
+                            200: '#FECDD3',
+                            400: '#FB7185',
+                            600: '#E11D48',
+                            700: '#BE123C',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
                     }
                 }
-            });
-
-            const mainCtx = document.getElementById('mainSalesChart').getContext('2d');
-            mainChartInstance = new Chart(mainCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
-                    datasets: [{
-                        label: 'Gross Sales ($)',
-                        data: [3200, 4500, 5100, 4800, 6200, 8900],
-                        backgroundColor: '#3b82f6',
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { grid: { borderDash: [4, 4] } },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
-        }
-
-        function updateCharts() {
-            if (miniChartInstance) miniChartInstance.update();
-            if (mainChartInstance) mainChartInstance.update();
+            }
         }
     </script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-app-page="vendor" class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- TOP HEADER -->
+    <header class="bg-[#059669] text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-spink-400 flex items-center justify-center text-white shadow-lg text-xl font-bold">
+                    <i class="fa-solid fa-basket-shopping"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                        AtudTA <span class="text-xs px-2 py-0.5 rounded-full bg-spink-400 text-white font-semibold">Polangui</span>
+                    </h1>
+                    <p class="text-xs text-white">Local Wet Market Delivery System</p>
+                </div>
+            </div>
+
+            <!-- Header Right Info & Session controls -->
+            <div id="headerUserInfo" class="flex items-center gap-3">
+                <span id="headerUserLabel" class="text-sm font-medium text-white hidden sm:inline">Delivery Management System</span>
+                <div id="headerAuthButtons" class="flex items-center gap-2">
+                    <!-- Dynamic Buttons Added JS -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed top-20 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <!-- ========================================== -->
+        <!-- 1. LOGIN SCREEN                            -->
+        <!-- ========================================== -->
+        <section id="vendorPage" class="space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div>
+                    <h2 class="text-2xl font-bold text-sage-800">🏪 Stall Vendor Dashboard</h2>
+                    <p class="text-lg font-bold text-emerald-700 mt-1"><i class="fa-solid fa-store mr-1"></i><span id="vendorDashboardStoreName">Store name</span></p>
+                    <p class="text-sm text-slate-500">Welcome, <strong class="userName text-sage-700">Vendor</strong>! Products and customer orders are shared with accounts using the same stall name and number.</p>
+                </div>
+                <button onclick="toggleProductModal(true)" class="bg-sage-600 hover:bg-sage-700 text-white font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Add New Produce
+                </button>
+            </div>
+
+            <!-- Metrics Overview -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-sage-600">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Total Products</p>
+                    <p id="vendorMetricTotalProducts" class="text-2xl font-black text-sage-800">0</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-500">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Active Orders</p>
+                    <p id="vendorMetricActiveOrders" class="text-2xl font-black text-amber-600">0</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-spink-600">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Today's Revenue</p>
+                    <p id="vendorMetricRevenue" class="text-2xl font-black text-spink-600">₱0.00</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-blue-500">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Stall Rating</p>
+                    <p class="text-2xl font-black text-slate-700">4.9 ⭐</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Products Inventory Table -->
+                <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
+                    <h3 class="font-bold text-lg text-sage-800 flex items-center gap-2">
+                        <i class="fa-solid fa-boxes-stacked text-sage-600"></i> Produce Inventory
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-100 text-xs text-slate-500 uppercase">
+                                <tr>
+                                    <th class="p-2.5">Item</th>
+                                    <th class="p-2.5">Price</th>
+                                    <th class="p-2.5">Stock</th>
+                                    <th class="p-2.5 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendorProductsTable" class="divide-y divide-slate-100">
+                                <!-- Populated JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Live Incoming Customer Orders -->
+                <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
+                    <h3 class="font-bold text-lg text-sage-800 flex items-center gap-2">
+                        <i class="fa-solid fa-receipt text-spink-600"></i> Incoming Customer Orders
+                    </h3>
+                    <div id="vendorOrdersPipeline" class="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                        <!-- Populated JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADD PRODUCT MODAL -->
+        <div id="productModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                <button onclick="toggleProductModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <h3 class="text-xl font-bold text-sage-800 mb-4">Add Market Product</h3>
+                <form id="addProductForm" onsubmit="handleSaveProduct(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Product Name</label>
+                        <input id="prodName" type="text" placeholder="e.g. Product name (1kg)" required class="w-full px-3 py-2 border rounded-xl text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Price (₱)</label>
+                            <input id="prodPrice" type="number" step="0.01" placeholder="180.00" required class="w-full px-3 py-2 border rounded-xl text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+                            <select id="prodCategory" required class="w-full px-3 py-2 border rounded-xl text-sm bg-white">
+                                <option value="Fish">Fish</option>
+                                <option value="Meat">Meat</option>
+                                <option value="Vegetables">Vegetables</option>
+                                <option value="Fruits">Fruits</option>
+                                <option value="Spices">Spices</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="prodImageFile" class="block text-xs font-semibold text-slate-600 mb-1">Product Picture (optional)</label>
+                        <input id="prodImageFile" type="file" accept=".jpg,.jpeg,.png,.webp,.gif" class="w-full px-3 py-2 border rounded-xl text-sm">
+                        <p class="mt-1 text-xs text-slate-500">Choose a JPG, PNG, WEBP, or GIF image up to 1 MB.</p>
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-sage-600 hover:bg-sage-700 text-white font-bold rounded-xl shadow transition">
+                        Save Produce Item
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- 6. RIDER DASHBOARD (SwiftCourier)         -->
+        <!-- ========================================== -->
+
+    </main>
+        <!-- PROFILE MODAL -->
+        <div id="profileModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+            <div class="glass-card w-full max-w-lg p-6 rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                <button type="button" onclick="toggleProfileModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold" aria-label="Close profile">✕</button>
+                <h2 class="text-2xl font-bold text-sage-800 mb-5">My Profile</h2>
+                <div class="flex flex-col items-center mb-6">
+                    <img id="profilePicture" alt="Profile picture" class="w-28 h-28 rounded-full object-cover border-4 border-sage-100 hidden">
+                    <div id="profilePicturePlaceholder" class="w-28 h-28 rounded-full bg-sage-100 text-sage-600 flex items-center justify-center text-4xl">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <label for="profilePictureInput" class="mt-3 cursor-pointer text-sm font-bold text-spink-600 hover:underline">Choose Profile Picture</label>
+                    <input id="profilePictureInput" type="file" accept="image/*" class="hidden">
+                    <p class="mt-1 text-xs text-slate-500">Image file up to 1 MB</p>
+                </div>
+                <dl class="space-y-3 text-sm">
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Name</dt><dd id="profileName" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Role</dt><dd id="profileRole" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Birthdate</dt><dd id="profileBirthdate" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Contact</dt><dd id="profileContact" class="text-right text-slate-800"></dd></div>
+                    <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="font-semibold text-slate-500">Email</dt><dd id="profileEmail" class="text-right text-slate-800 break-all"></dd></div>
+                    <div id="profileRoleDetails" class="space-y-3"></div>
+                </dl>
+                <div id="profileAddressEditButton" class="hidden mt-5">
+                    <button type="button" onclick="openProfileAddressEditor()"
+                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Address
+                    </button>
+                </div>
+                <form id="profileAddressEditor" class="hidden mt-5 space-y-4" onsubmit="saveProfileAddress(event)">
+                    <h3 class="font-bold text-slate-800">Edit Delivery Address</h3>
+                    <div>
+                        <label for="profileAddress" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Complete Address</label>
+                        <input id="profileAddress" type="text" autocomplete="street-address" required
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sage-500 focus:outline-none transition">
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" onclick="closeProfileAddressEditor()"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition">
+                            Save Address
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+    <!-- FOOTER -->
+    <footer class="bg-[#059669] text-white py-6 border-t border-[#047857] mt-12 text-center text-xs">
+        <p>&copy; 2026 AtudTA Wet Market Platform. Polangui, Albay Philippines. All Rights Reserved.</p>
+    </footer>
+
+    <!-- JAVASCRIPT APP ENGINE -->
+    <script src="app.js" defer></script>
 </body>
 </html>
