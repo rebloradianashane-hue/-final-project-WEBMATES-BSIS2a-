@@ -6,6 +6,13 @@ const userSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    // Keep email addresses normalized and required across all signup flows.
+    email: {
+        type: String,
+        required: true,
+        trim: true,
+        lowercase: true
+    },
     
     role: {
         type: String,
