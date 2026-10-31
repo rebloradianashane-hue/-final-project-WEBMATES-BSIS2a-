@@ -21,7 +21,6 @@ router.post('/process', async (req, res) => {
 // 2. GET: Retrieve all payment logs
 router.get('/', async (req, res) => {
     try {
-        // 📌 INAYOS: Binago mula 'payment' papuntang 'Payment' (Capital P)
         const payments = await Payment.find(); 
         res.status(200).json(payments);
     } catch (error) {

@@ -7,7 +7,8 @@ router.post(
   '/',
   [
     // Step 3: Input Validation
-    body('name').trim().notEmpty().withMessage('Full name is required'),
+    body('name').trim().notEmpty().withMessage('Full name is required'),    // Require a valid email address for this registration endpoint.
+    body('email').trim().isEmail().withMessage('Valid email is required'),
     body('address').trim().notEmpty().withMessage('Address is required'),
     body('contactNumber').trim().notEmpty().withMessage('Contact number is required'),
     body('role').trim().notEmpty().withMessage('Role is required'),
@@ -29,13 +30,13 @@ router.post(
     }
 
     try {
-      const { name, address, role, password, contactNumber } = req.body;
+      const { name, email, address, role, password, contactNumber } = req.body;
 
       // Save user account logic / database operations go here
 
       res.status(201).json({
         message: 'User account registered successfully',
-        account: { name, address, role, contactNumber }
+        account: { name, email: email.toLowerCase(), address, role, contactNumber }
       });
     } catch (error) {
       res.status(500).json({ error: error.message });

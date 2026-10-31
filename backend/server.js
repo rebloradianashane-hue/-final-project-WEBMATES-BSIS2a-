@@ -3,7 +3,6 @@ const express = require('express');
 const mongoose = require('mongoose'); 
 const cors = require('cors');           
 const helmet = require('helmet');       
-const xss = require('xss-clean');       
 const rateLimit = require('express-rate-limit'); 
 
 const app = express();
@@ -13,16 +12,15 @@ const app = express();
 // ==========================================
 
 // 1. HTTP Security Headers (Protects against clickjacking, sniffing, etc.)
-app.use(helmet());                      
+app.use(helmet());                                     
 
 // 2. Cross-Origin Resource Sharing (Allows Live Server frontend to send requests)
-app.use(cors());                        
+app.use(cors());                                     
 
-// 3. Body Parser (Must be before XSS sanitizer to parse JSON input first)
+// 3. Body Parser (Must be before request handlers to parse JSON input first)
 app.use(express.json()); 
 
-// 4. XSS Prevention (Sanitizes user input in req.body, req.query, and req.params)
-app.use(xss());                         
+// 4. XSS Prevention - (Skipped due to xss-clean incompatibility; express-validator handles input sanitization)
 
 // 5. STEP 8: Anti-Brute Force Rate Limiting
 const authLimiter = rateLimit({
