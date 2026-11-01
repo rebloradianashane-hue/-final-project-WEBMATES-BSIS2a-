@@ -21,6 +21,25 @@ const productSchema = new mongoose.Schema({
         required: true,
         min: 0,
         default: 0
+    },
+    stockUnit: {
+        type: String,
+        enum: ['piece', 'kg'],
+        required: true,
+        default: 'piece'
+    },
+    category: {
+        type: String,
+        enum: ['Fish', 'Meat', 'Vegetables', 'Fruits', 'Spices'],
+        default: 'Vegetables'
+    },
+    imageData: {
+        type: String,
+        default: ''
+    },
+    inStock: {
+        type: Boolean,
+        default: true
     }
 }, { timestamps: true });
 

@@ -11,24 +11,37 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        lowercase: true
+        lowercase: true,
+        unique: true
     },
     
     role: {
         type: String,
         required: true,
-        enum: ['customer', 'vendor', 'courier'], // Ensures explicit platform definitions
-        default: 'customer'
+        enum: ['Customer', 'Vendor', 'Rider'],
+        default: 'Customer'
     },
     password: {
         type: String,
-        required: true
+        required: true,
+        select: false
     },
     contactNumber: {
         type: String,
         required: true,
+        trim: true,
+        unique: true
+    },
+    address: {
+        type: String,
+        required: true,
         trim: true
-    }
+    },
+    businessRole: { type: String, trim: true },
+    badgeNumber: { type: String, trim: true },
+    stallNumber: { type: String, trim: true },
+    stallName: { type: String, trim: true },
+    licenseNumber: { type: String, trim: true }
 }, { timestamps: true }); // Automatically manages createdAt and updatedAt fields
 
 module.exports = mongoose.model('User', userSchema);
