@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const User = require('../models/user'); 
 const protectRoute = require('../middleware/authMiddleware'); // Import para sa Step 10: Route Protection
+const { createAccount, publicAccount } = require('../utils/account');
 
 // ==========================================
 // 1. POST: Register / Create User Routes
@@ -14,7 +15,7 @@ router.post('/register',
     // Step 3: Input Validation rules
     body('name').trim().notEmpty().withMessage('Full name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
-    body('contactNumber').trim().notEmpty().withMessage('Contact number is required'),
+    body('contactNumber').trim().matches(/^09\d{9}$/).withMessage('Enter a valid 11-digit mobile number starting with 09'),
     
     // Step 7: Password Strengthening rules
     body('password')
@@ -34,19 +35,15 @@ router.post('/register',
 
     try {
       const { name, contactNumber, password, userRole, email } = req.body;
-
-      const newUser = new User({ 
-        name, 
-        contactNumber, 
-        email, 
-        password, 
-        role: userRole || "user", 
-        address: "Not Provided Yet" 
+      const role = normalizeRole(userRole);
+      const savedUser = await createAccount({
+        name, contactNumber, email, password, role, address: req.body.address || 'Not Provided Yet'
       });
-
-      const savedUser = await newUser.save();
-      res.status(201).json({ message: 'User created successfully!', user: savedUser });
+      res.status(201).json({ message: 'User created successfully!', user: publicAccount(savedUser) });
     } catch (error) {
+      if (error.code === 11000) {
+        return res.status(409).json({ error: 'Email or contact number already registered.' });
+      }
       res.status(500).json({ error: error.message });
     }
 }
@@ -61,22 +58,28 @@ router.post('/', async (req, res) => {
         if (!name || !email || !password || !contactNumber) {
             return res.status(400).json({ error: 'Name, email, contact number, and password are required.' });
         }
+        if (!/^09\d{9}$/.test(contactNumber.trim())) {
+            return res.status(400).json({ error: 'Enter a valid 11-digit mobile number starting with 09.' });
+        }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
             return res.status(400).json({ error: 'Valid email is required.' });
         }
 
-        const newUser = new User({
+        const role = normalizeRole(userRole);
+        const newUser = await createAccount({
             name,
             email,
             contactNumber,
             password,
-            role: userRole || "user",
-            address: "Not Provided Yet"
+            role,
+            address: req.body.address || "Not Provided Yet"
         });
 
-        const savedUser = await newUser.save();
-        res.status(201).json({ success: true, message: 'User created successfully!', user: savedUser });
+        res.status(201).json({ success: true, message: 'User created successfully!', user: publicAccount(newUser) });
     } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, error: 'Email or contact number already registered.' });
+        }
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -87,7 +90,7 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
     try {
         const users = await User.find();
-        res.status(200).json(users);
+        res.status(200).json(users.map(publicAccount));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -96,7 +99,7 @@ router.get('/', async (req, res) => {
 // ==========================================
 // 3. GET: Protected Profile Route (Step 10)
 // ==========================================
-// Ginagamitan ng `protectRoute` middleware para masuri kung may 'role' header
+// Ginagamitan ng protectRoute middleware para masuri kung may 'role' header
 router.get('/profile', protectRoute, (req, res) => {
     res.status(200).json({ 
         message: 'Welcome to your protected profile!',
@@ -139,3 +142,14 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+
+function normalizeRole(role) {
+    const roles = {
+        customer: 'Customer',
+        vendor: 'Vendor',
+        rider: 'Rider',
+        courier: 'Rider'
+    };
+    const normalized = roles[String(role || '').toLowerCase()] || 'Customer';
+    return normalized;
+}
