@@ -1,3 +1,4 @@
+<<<<<<< HEAD:routes/userRoutes.js
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
@@ -153,3 +154,5 @@ function normalizeRole(role) {
     const normalized = roles[String(role || '').toLowerCase()] || 'Customer';
     return normalized;
 }
+=======
+>>>>>>> be579441303c13f4d9e48809ffbac9e73f17323b:backend/routes/userRoutes.js

@@ -1,3 +1,4 @@
+<<<<<<< HEAD:server.js
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose'); 
@@ -108,3 +109,5 @@ mongoose.connect(mongoUri)
     console.error('MongoDB connection error:', err);
     process.exit(1);
   });
+=======
+>>>>>>> be579441303c13f4d9e48809ffbac9e73f17323b:backend/server.js
