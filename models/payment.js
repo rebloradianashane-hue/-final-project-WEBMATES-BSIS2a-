@@ -1,3 +1,4 @@
+<<<<<<< HEAD:models/payment.js
 const mongoose = require('mongoose');
 
 const paymentSchema = new mongoose.Schema({
@@ -38,3 +39,5 @@ paymentSchema.index(
 );
 
 module.exports = mongoose.model('Payment', paymentSchema);
+=======
+>>>>>>> be579441303c13f4d9e48809ffbac9e73f17323b:backend/models/payment.js

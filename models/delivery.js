@@ -1,3 +1,4 @@
+<<<<<<< HEAD:models/delivery.js
 const mongoose = require('mongoose');
 
 const deliverySchema = new mongoose.Schema({
@@ -42,3 +43,5 @@ const deliverySchema = new mongoose.Schema({
 deliverySchema.index({ orderID: 1 }, { unique: true });
 
 module.exports = mongoose.model('Delivery', deliverySchema);
+=======
+>>>>>>> be579441303c13f4d9e48809ffbac9e73f17323b:backend/models/delivery.js
