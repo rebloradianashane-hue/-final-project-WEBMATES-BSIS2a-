@@ -1,55 +1,42 @@
 # AtudTA Wet Market Platform
 
-AtudTA is a web-based wet market platform connecting customers, vendors, and delivery riders. Customers can browse products, manage a cart, and place orders; vendors can manage product inventory and orders; riders can accept and update deliveries.
-
-## Features
-
-- Customer registration, sign-in, product browsing, cart, and checkout
-- Vendor product stock and availability management
-- Shared order and delivery status tracking
-- Product reviews
-- Responsive pages styled with Tailwind CSS
-
-## Frontend pages
-
-| File | Purpose |
-| --- | --- |
-| `index.html` | Redirects to the sign-in page |
-| `login.html`, `signup.html` | Account access and registration |
-| `customer.html` | Customer dashboard and profile |
-| `products.html` | Product catalog and shopping cart |
-| `payment.html` | Checkout and payment details |
-| `reviews.html` | Product details and reviews |
-| `vendor.html` | Vendor inventory and order dashboard |
-| `rider.html`, `delivery.html` | Rider dashboard and delivery queue |
-
-`app.js` contains shared application logic, and `styles.css` contains additional styles.
-
 ## Run locally
 
-The frontend depends on the Express API and MongoDB database in the `backend` folder. Configure a valid `MONGO_URI` in `backend/.env` and keep that file private.
+The Express backend serves this frontend and the API from the same local address. First make sure `backend/.env` contains a valid `MONGO_URI` for your MongoDB database. Keep that file private. If you prefer to open the frontend through Live Server on `localhost` or `127.0.0.1`, the app automatically sends API requests to `http://localhost:5000`.
 
-1. Start the backend from the repository root:
+In VS Code, open a terminal and run:
 
-   ```powershell
-   cd backend
-   npm install
-   npm start
-   ```
+```powershell
+cd "D:\final project\backend"
+npm start
+```
 
-2. In VS Code, open the `frontend` folder and start it with Live Server (or another static web server).
-3. Open the local frontend URL, such as `http://127.0.0.1:5500`. When the frontend host is `localhost` or `127.0.0.1`, API requests are sent to `http://localhost:5000`.
+When the terminal reports that MongoDB connected and the server is running, open `http://localhost:5000` in Chrome. The root page redirects to the login page. Signup and login are sent to the backend; new accounts are saved in MongoDB, and passwords are stored as scrypt hashes rather than plain text.
 
-Do not open the HTML files directly with a `file://` URL.
+Do not open the HTML files with `file://`; use `http://localhost:5000` or Live Server on localhost so the frontend can reach the backend API.
 
-## API configuration and deployment
+## Deploying on Render
 
-The API base URL is configured in `app.js`. Local frontend hosts use `http://localhost:5000`; other hosts use the configured hosted API URL. If you deploy to a different backend, update that URL (without a trailing slash) and ensure the backend allows the frontend origin through CORS.
+The backend must be deployed as a Render **Web Service** with a valid `MONGO_URI` environment variable. If the frontend is deployed separately as a **Static Site**, open `app.js` and set `API_BASE_URL` to the backend Web Service URL, for example `https://your-backend.onrender.com` (no trailing slash), then redeploy the frontend. Leave it empty when the backend serves the frontend from the same origin.
 
-Account and marketplace data are stored by the backend. The shopping cart is kept in browser storage. Do not put database credentials, private tokens, or other secrets in frontend files.
+The frontend must use the backend service URL, not its own Static Site URL. If login or signup still fails, open the backend service's Render logs and confirm it is running and connected to MongoDB.
 
-## Technology
+## Pages
 
-- HTML, CSS, and vanilla JavaScript
-- Tailwind CSS, Font Awesome, and Google Fonts loaded from CDNs
-- Express API with MongoDB for persistent application data
+- `login.html` and `signup.html`: account access and registration
+- `customer.html` and `products.html`: customer dashboard, catalog, and cart
+- `payment.html`: checkout and payment details
+- `reviews.html`: product details and customer reviews
+- `vendor.html`: vendor inventory and incoming orders
+- `rider.html` and `delivery.html`: rider dashboard and delivery queue
+- `index.html`: redirects to the login page
+
+All pages load shared behavior from `app.js` and shared styles from `styles.css`.
+
+Vendors enter each product's stock quantity and choose whether it is measured in pieces or kilograms. Customers see the available stock in the catalog, and placing an order reduces the listed quantity.
+
+Products are stored in the MongoDB `products` collection. The product catalog is loaded from the backend API, and vendor product creation, availability changes, deletion, and customer stock reservations are saved there. After updating the app, sign out and sign in again so the browser receives a server session token. Use the same `MONGO_URI` database in MongoDB Compass; product data previously saved only in browser storage is not automatically copied to MongoDB.
+
+The backend keeps API sessions in memory for 24 hours, so sign in again after restarting the server. Orders and order statuses are stored in MongoDB and shared across customer, vendor, and rider accounts; newly placed orders reserve product stock in the same backend flow. Each new order also creates a payment record in `payments` and a delivery record in `deliveries`; delivery status is updated when a rider accepts, starts, and completes a delivery. When a rider starts delivery, the backend records the pickup date and time and estimates delivery 30 minutes later. Customer reviews are saved to and loaded from the `reviews` collection, and may only be submitted for products in that customer's delivered orders. Cart contents remain in browser storage. Older reviews, orders, and cart contents saved only in browser storage are not migrated automatically.
+
+MongoDB collection names are lowercase and plural (`reviews`, `payments`, and `deliveries`). Make sure MongoDB Compass is connected to the same database named in `backend/.env`'s `MONGO_URI`; records created before this change are not backfilled into the new collections.
