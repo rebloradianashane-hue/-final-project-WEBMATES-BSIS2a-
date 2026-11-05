@@ -27,10 +27,9 @@ AtudTA is a web-based wet market platform connecting customers, vendors, and del
 
 ## Run locally
 
-The frontend depends on the Express API and MongoDB database in the `backend` folder.
+The frontend depends on the Express API and MongoDB database in the `backend` folder. Configure a valid `MONGO_URI` in `backend/.env` and keep that file private.
 
-1. Make sure `backend/.env` contains a valid `MONGO_URI`. Keep this file private.
-2. From the repository root, start the backend:
+1. Start the backend from the repository root:
 
    ```powershell
    cd backend
@@ -38,13 +37,14 @@ The frontend depends on the Express API and MongoDB database in the `backend` fo
    npm start
    ```
 
-3. Open `http://localhost:5000` in a browser. The root page redirects to the sign-in page.
+2. In VS Code, open the `frontend` folder and start it with Live Server (or another static web server).
+3. Open the local frontend URL, such as `http://127.0.0.1:5500`. When the frontend host is `localhost` or `127.0.0.1`, API requests are sent to `http://localhost:5000`.
 
-You can also serve the `frontend` folder with a local web server such as VS Code Live Server, provided the configured API is reachable. Do not open the HTML files directly with a `file://` URL.
+Do not open the HTML files directly with a `file://` URL.
 
 ## API configuration and deployment
 
-The API base URL is configured in `app.js`. If the frontend and backend are deployed separately, set it to the backend Web Service URL (without a trailing slash), then redeploy the frontend. The backend must allow the frontend origin through CORS.
+The API base URL is configured in `app.js`. Local frontend hosts use `http://localhost:5000`; other hosts use the configured hosted API URL. If you deploy to a different backend, update that URL (without a trailing slash) and ensure the backend allows the frontend origin through CORS.
 
 Account and marketplace data are stored by the backend. The shopping cart is kept in browser storage. Do not put database credentials, private tokens, or other secrets in frontend files.
 
