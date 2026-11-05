@@ -2,15 +2,22 @@
         // DATA MODEL / ERD IN-MEMORY & LOCALSTORAGE
         // ==========================================
         
+        const localFrontendHosts = ["localhost", "127.0.0.1"];
+        const API_BASE_URL = localFrontendHosts.includes(window.location.hostname) &&
+            window.location.port !== "" && window.location.port !== "5000"
+            ? `http://${window.location.hostname}:5000`
+            : "";
         const initialProducts = [];
         const removedProductIds = new Set(["P1", "P2", "P3", "P4"]);
 
         // System State
         let users = JSON.parse(localStorage.getItem("atudtaUsers") || "[]");
+        users.forEach(user => { delete user.password; });
+        localStorage.setItem("atudtaUsers", JSON.stringify(users));
         let products = JSON.parse(localStorage.getItem("atudtaProducts") || JSON.stringify(initialProducts))
             .filter(product => !removedProductIds.has(product.id));
-        let orders = JSON.parse(localStorage.getItem("atudtaOrders") || "[]");
-        let reviews = JSON.parse(localStorage.getItem("atudtaReviews") || "[]");
+        let orders = [];
+        let reviews = [];
         let cart = JSON.parse(localStorage.getItem("atudtaCart") || "[]")
             .filter(item => !removedProductIds.has(item.productId));
         localStorage.setItem("atudtaProducts", JSON.stringify(products));
@@ -24,6 +31,84 @@
         let riderCurrentLocation = null;
         let riderLocationRequestPending = false;
         let selectedProductId = null;
+
+        function getProductStock(product) {
+            const stock = Number(product.stock);
+            return Number.isFinite(stock) && stock >= 0 ? stock : null;
+        }
+
+        function formatQuantity(quantity) {
+            return Number(quantity).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+
+        function getStockUnitLabel(stockUnit) {
+            return stockUnit === "kg" ? "kg" : "pcs";
+        }
+
+        function getCartQuantityStep(product) {
+            return product?.stockUnit === "kg" ? 0.1 : 1;
+        }
+
+        async function apiRequest(path, options = {}) {
+            const headers = { ...(options.headers || {}) };
+            if (options.body !== undefined) {
+                headers["Content-Type"] = "application/json";
+            }
+            const token = sessionStorage.getItem("atudtaAuthToken");
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
+
+            let response;
+            try {
+                response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+            } catch (error) {
+                if (error instanceof TypeError) {
+                    throw new Error("Could not reach the API server. Check the backend URL and CORS settings.");
+                }
+                throw error;
+            }
+
+            const responseText = await response.text();
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (error) {
+                throw new Error(
+                    `The API returned a non-JSON response (HTTP ${response.status}). ` +
+                    "Check that the backend URL points to your Render web service."
+                );
+            }
+            if (!response.ok) {
+                throw new Error(result?.error || result?.message || "The request could not be completed.");
+            }
+            return result;
+        }
+
+        async function loadProductsFromDatabase() {
+            const loadedProducts = await apiRequest("/api/products");
+            if (!Array.isArray(loadedProducts)) {
+                throw new Error("The server returned an invalid product list.");
+            }
+            products = loadedProducts.filter(product => !removedProductIds.has(product.id));
+            localStorage.setItem("atudtaProducts", JSON.stringify(products));
+        }
+
+        async function loadOrdersFromDatabase() {
+            const loadedOrders = await apiRequest("/api/orders");
+            if (!Array.isArray(loadedOrders)) {
+                throw new Error("The server returned an invalid order list.");
+            }
+            orders = loadedOrders;
+        }
+
+        async function loadReviewsFromDatabase() {
+            const loadedReviews = await apiRequest("/api/reviews");
+            if (!Array.isArray(loadedReviews)) {
+                throw new Error("The server returned an invalid review list.");
+            }
+            reviews = loadedReviews;
+        }
 
         // Sound Effects via Web Audio API
         function playChime() {
@@ -58,22 +143,31 @@
         }
 
         // Synchronization across tabs
-        window.addEventListener('storage', (e) => {
-            if (e.key === "atudtaOrders" || e.key === "atudtaProducts") {
-                orders = JSON.parse(localStorage.getItem("atudtaOrders") || "[]");
-                products = JSON.parse(localStorage.getItem("atudtaProducts") || JSON.stringify(initialProducts))
-                    .filter(product => !removedProductIds.has(product.id));
-                localStorage.setItem("atudtaProducts", JSON.stringify(products));
-                renderAll();
-                showToast("System data updated from another window!");
+        window.addEventListener('storage', async (e) => {
+            if (e.key === "atudtaOrders") {
+                try {
+                    await loadOrdersFromDatabase();
+                    renderAll();
+                } catch (error) {
+                    console.error("Could not refresh orders from MongoDB.", error);
+                    showToast(error.message || "Could not refresh orders from MongoDB.", "error");
+                }
+            }
+            if (e.key === "atudtaProducts") {
+                try {
+                    await loadProductsFromDatabase();
+                    renderAll();
+                    showToast("Product inventory refreshed from the database.");
+                } catch (error) {
+                    console.error("Could not refresh product inventory.", error);
+                    showToast(error.message || "Could not refresh product inventory.", "error");
+                }
             }
         });
 
         function saveData() {
             localStorage.setItem("atudtaUsers", JSON.stringify(users));
             localStorage.setItem("atudtaProducts", JSON.stringify(products));
-            localStorage.setItem("atudtaOrders", JSON.stringify(orders));
-            localStorage.setItem("atudtaReviews", JSON.stringify(reviews));
             localStorage.setItem("atudtaCart", JSON.stringify(cart));
         }
 
@@ -272,11 +366,16 @@
         }
 
         function toggleProfileModal(open) {
-            if (!currentUser) {
+            const modal = document.getElementById("profileModal");
+            if (!modal) {
                 return;
             }
 
             if (open) {
+                if (!currentUser) {
+                    return;
+                }
+
                 document.getElementById("profileName").textContent = currentUser.name || "Not provided";
                 document.getElementById("profileRole").textContent = currentUser.role || "Not provided";
                 document.getElementById("profileBirthdate").textContent = currentUser.birthdate || "Not provided";
@@ -315,7 +414,7 @@
                 }
             }
 
-            document.getElementById("profileModal").classList.toggle("hidden", !open);
+            modal.classList.toggle("hidden", !open);
         }
 
         function openProfileAddressEditor() {
@@ -416,12 +515,14 @@
         });
 
         // SIGN UP FORM
-        document.getElementById("signupForm")?.addEventListener("submit", function(e) {
+        document.getElementById("signupForm")?.addEventListener("submit", async function(e) {
             e.preventDefault();
+            const message = document.getElementById("signupMessage");
+            const submitButton = e.currentTarget.querySelector('button[type="submit"]');
             const firstName = document.getElementById("signupFirstName").value.trim();
             const middleName = document.getElementById("signupMiddleName").value.trim();
             const lastName = document.getElementById("signupLastName").value.trim();
-            const name = [firstName, middleName, lastName].join(" ");
+            const name = [firstName, middleName, lastName].filter(Boolean).join(" ");
             const contact = document.getElementById("signupContact").value.trim();
             const address = document.getElementById("signupAddress").value.trim();
             const email = document.getElementById("signupEmail").value.trim().toLowerCase();
@@ -435,16 +536,6 @@
 
             if (!address) {
                 document.getElementById("signupMessage").textContent = "Please enter your complete address.";
-                return;
-            }
-
-            if (users.some(user => user.contact === contact)) {
-                document.getElementById("signupMessage").textContent = "Contact number already registered!";
-                return;
-            }
-
-            if (users.some(user => user.email?.toLowerCase() === email)) {
-                document.getElementById("signupMessage").textContent = "Email already registered!";
                 return;
             }
 
@@ -467,58 +558,67 @@
                 return;
             }
             if (role === "Vendor" && !/^\d{3}-\d{3}-\d{3}$/.test(roleDetails.badgeNumber)) {
-                document.getElementById("signupMessage").textContent = "Badge number must use the 111-222-333 format.";
+                message.textContent = "Badge number must use the 111-222-333 format.";
                 document.getElementById("signupBadgeNumber").focus();
                 return;
             }
 
-            const userId = "U_" + Date.now();
-            currentUser = {
-                id: userId,
-                name,
-                contact,
-                address,
-                email,
-                password,
-                role,
-                ...roleDetails,
-                ...(role === "Vendor" ? { businessId: getVendorBusinessId({ id: userId, ...roleDetails }) } : {})
-            };
-            users.push(currentUser);
-            saveData();
+            message.textContent = "";
+            submitButton.disabled = true;
+            try {
+                const result = await apiRequest("/api/register", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name, contactNumber: contact, address, email, password, role, ...roleDetails
+                    })
+                });
 
-            sessionStorage.setItem("atudtaSession", currentUser.id);
-            document.getElementById("signupForm").reset();
-            updateSignupRoleFields();
-            document.getElementById("signupMessage").textContent = "";
+                currentUser = result.user;
+                users = users.filter(user => user.id !== currentUser.id);
+                users.push(currentUser);
+                saveData();
+                sessionStorage.setItem("atudtaAuthToken", result.sessionToken);
+                sessionStorage.setItem("atudtaSession", currentUser.id);
+                document.getElementById("signupForm").reset();
+                updateSignupRoleFields();
 
-            showToast(`Account created for ${currentUser.name}!`);
-            openDashboard(currentUser.role);
+                showToast(`Account created for ${currentUser.name}!`);
+                openDashboard(currentUser.role);
+            } catch (error) {
+                message.textContent = error.message || "Could not connect to the server. Please try again.";
+            } finally {
+                submitButton.disabled = false;
+            }
         });
 
         // LOGIN FORM
-        document.getElementById("loginForm")?.addEventListener("submit", function(e) {
+        document.getElementById("loginForm")?.addEventListener("submit", async function(e) {
             e.preventDefault();
             const email = document.getElementById("loginEmail").value.trim().toLowerCase();
             const password = document.getElementById("loginPassword").value;
+            const message = document.getElementById("loginMessage");
+            const submitButton = e.currentTarget.querySelector('button[type="submit"]');
+            message.textContent = "";
+            submitButton.disabled = true;
+            try {
+                const result = await apiRequest("/api/auth/login", {
+                    method: "POST",
+                    body: JSON.stringify({ email, password })
+                });
 
-            const user = users.find(candidate =>
-                candidate.email?.toLowerCase() === email && candidate.password === password);
-            if (!user) {
-                document.getElementById("loginMessage").textContent = "Invalid email or password.";
-                return;
+                currentUser = result.user;
+                users = users.filter(user => user.id !== currentUser.id);
+                users.push(currentUser);
+                saveData();
+                sessionStorage.setItem("atudtaAuthToken", result.sessionToken);
+                sessionStorage.setItem("atudtaSession", currentUser.id);
+                showToast(`Welcome back, ${currentUser.name}!`);
+                openDashboard(currentUser.role);
+            } catch (error) {
+                message.textContent = error.message || "Could not connect to the server. Please try again.";
+            } finally {
+                submitButton.disabled = false;
             }
-            if (!Object.hasOwn(rolePages, user.role)) {
-                document.getElementById("loginMessage").textContent = "This account has no valid role. Please contact an administrator.";
-                return;
-            }
-
-            currentUser = user;
-            sessionStorage.setItem("atudtaSession", currentUser.id);
-            document.getElementById("loginMessage").textContent = "";
-
-            showToast(`Welcome back, ${currentUser.name}!`);
-            openDashboard(currentUser.role);
         });
 
         function openDashboard(role) {
@@ -547,6 +647,7 @@
             }
             document.getElementById("riderLocationMapLink")?.classList.add("hidden");
             sessionStorage.removeItem("atudtaSession");
+            sessionStorage.removeItem("atudtaAuthToken");
             showPage("loginPage");
         }
 
@@ -608,6 +709,11 @@
             grid.innerHTML = filtered.map(p => {
                 const vendor = users.find(user => user.id === p.vendorId);
                 const storeName = p.vendorName || vendor?.stallName || "AtudTA Market Vendor";
+                const stock = getProductStock(p);
+                const isAvailable = p.inStock && (stock === null || stock > 0);
+                const stockText = stock === null
+                    ? "Stock not set"
+                    : `Stock: ${formatQuantity(stock)} ${getStockUnitLabel(p.stockUnit)}`;
                 return `
                 <div class="glass-card rounded-2xl border border-slate-300 overflow-hidden shadow-xl hover:shadow-2xl transition flex flex-col justify-between">
                     <button type="button" onclick="openProductDetails('${p.id}')" class="w-full p-4 text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sage-500">
@@ -619,14 +725,15 @@
                         <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">${p.category}</span>
                         <h4 class="font-bold text-slate-800 text-base mt-1">${escapeHTML(p.name)}</h4>
                         <p class="text-xs text-slate-500 mt-1">Store: ${escapeHTML(storeName)}</p>
-                        <p class="text-spink-600 font-extrabold text-lg mt-1">₱${p.price.toFixed(2)}</p>
+                        <p class="text-spink-600 font-extrabold text-lg mt-1">₱${p.price.toFixed(2)} / ${getStockUnitLabel(p.stockUnit)}</p>
+                        <p class="text-xs font-semibold ${isAvailable ? 'text-emerald-700' : 'text-rose-600'} mt-1">${stockText}</p>
                         <span class="mt-2 inline-block text-xs font-semibold text-sage-700">View product details & customer reviews</span>
                     </button>
                     <div class="p-4 pt-0">
                         <div class="grid grid-cols-2 gap-2">
-                            <button onclick="addToCart('${p.id}')" ${!p.inStock ? 'disabled' : ''} 
+                            <button onclick="addToCart('${p.id}')" ${!isAvailable ? 'disabled' : ''} 
                                 class="col-span-2 py-2 bg-spink-400 hover:bg-spink-600 disabled:bg-slate-200 text-white font-bold rounded-xl text-sm transition">
-                                ${p.inStock ? 'Add to Cart' : 'Out of Stock'}
+                                ${isAvailable ? 'Add to Cart' : 'Out of Stock'}
                             </button>
                         </div>
                     </div>
@@ -637,17 +744,27 @@
 
         function addToCart(prodId) {
             const prod = products.find(p => p.id === prodId);
-            if (!prod) return;
+            if (!prod || !prod.inStock) return;
 
             const existing = cart.find(c => c.productId === prodId);
+            const stock = getProductStock(prod);
+            const step = getCartQuantityStep(prod);
+            const quantityToAdd = existing
+                ? step
+                : stock !== null && stock < 1 ? stock : 1;
+            if (stock !== null && (stock <= 0 || (existing?.quantity || 0) + quantityToAdd > stock + 1e-8)) {
+                showToast("There is not enough stock available for that quantity.", "error");
+                return;
+            }
             if (existing) {
-                existing.quantity++;
+                existing.quantity = Math.round((existing.quantity + quantityToAdd) * 100) / 100;
             } else {
                 cart.push({
                     productId: prod.id,
                     name: prod.name,
                     price: prod.price,
-                    quantity: 1,
+                    quantity: quantityToAdd,
+                    stockUnit: prod.stockUnit || "piece",
                     vendorId: prod.vendorId,
                     businessId: getProductBusinessId(prod)
                 });
@@ -691,15 +808,16 @@
                                 <p class="font-bold text-slate-800 break-words">${escapeHTML(item.name)}</p>
                                 <p class="text-xs text-slate-500 mt-1">${escapeHTML(product?.category || "Product")}</p>
                                 <p class="text-xs text-slate-500">Store: ${escapeHTML(storeName)}</p>
-                                <p class="text-xs text-slate-500 mt-1">₱${item.price.toFixed(2)} each</p>
+                                <p class="text-xs text-slate-500 mt-1">₱${item.price.toFixed(2)} / ${getStockUnitLabel(product?.stockUnit || item.stockUnit)}</p>
                                 <div class="flex items-center gap-2 mt-2">
                                     <button type="button" onclick="changeCartQuantity('${item.productId}', -1)"
                                         aria-label="Decrease ${escapeHTML(item.name)} quantity"
                                         class="w-7 h-7 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold">−</button>
-                                    <span class="min-w-6 text-center font-semibold" aria-label="Quantity">${item.quantity}</span>
+                                    <span class="min-w-6 text-center font-semibold" aria-label="Quantity">${formatQuantity(item.quantity)} ${getStockUnitLabel(product?.stockUnit || item.stockUnit)}</span>
                                     <button type="button" onclick="changeCartQuantity('${item.productId}', 1)"
+                                        ${product && getProductStock(product) !== null && item.quantity >= getProductStock(product) ? "disabled" : ""}
                                         aria-label="Increase ${escapeHTML(item.name)} quantity"
-                                        class="w-7 h-7 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold">+</button>
+                                        class="w-7 h-7 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold disabled:opacity-40 disabled:cursor-not-allowed">+</button>
                                 </div>
                                 <p class="font-extrabold text-spink-600 mt-1">Subtotal: ₱${(item.price * item.quantity).toFixed(2)}</p>
                             </div>
@@ -774,7 +892,15 @@
             if (!item) {
                 return;
             }
-            item.quantity += change;
+            const product = products.find(candidate => candidate.id === prodId);
+            const step = getCartQuantityStep(product || item);
+            const stock = product ? getProductStock(product) : null;
+            const nextQuantity = Math.round((item.quantity + change * step) * 100) / 100;
+            if (change > 0 && stock !== null && nextQuantity > stock + 1e-8) {
+                showToast("There is not enough stock available for that quantity.", "error");
+                return;
+            }
+            item.quantity = nextQuantity;
             if (item.quantity <= 0) {
                 cart = cart.filter(cartItem => cartItem.productId !== prodId);
                 selectedCartProductIds.delete(prodId);
@@ -848,7 +974,7 @@
             })[character]);
             list.innerHTML = checkoutDraft.map(item => `
                 <div class="py-2 flex justify-between gap-3 text-sm">
-                    <span class="font-semibold text-slate-700">${escapeHTML(item.name)} × ${item.quantity}</span>
+                    <span class="font-semibold text-slate-700">${escapeHTML(item.name)} × ${formatQuantity(item.quantity)} ${getStockUnitLabel(item.stockUnit)}</span>
                     <span class="font-bold text-slate-700">₱${(item.price * item.quantity).toFixed(2)}</span>
                 </div>
             `).join("");
@@ -863,14 +989,28 @@
                     .filter(Boolean).join(", ");
         }
 
-        function handleCheckout(e) {
+        async function handleCheckout(e) {
             e.preventDefault();
+            const submitButton = e.currentTarget.querySelector("button[type='submit']");
+            if (submitButton.disabled) {
+                return;
+            }
             if (!currentUser || currentUser.role !== "Customer" ||
                 !Array.isArray(checkoutDraft) || checkoutDraft.length === 0) {
                 showToast("Your checkout session is empty. Return to products and select items again.", "error");
                 return;
             }
             const selectedItems = checkoutDraft;
+            const unavailableItem = selectedItems.find(item => {
+                const product = products.find(candidate => candidate.id === item.productId);
+                const stock = product ? getProductStock(product) : 0;
+                return !product || !product.inStock || (stock !== null && (stock <= 0 || item.quantity > stock + 1e-8));
+            });
+            if (unavailableItem) {
+                showToast(`${unavailableItem.name} no longer has enough stock. Please review your cart.`, "error");
+                renderCustomerProducts();
+                return;
+            }
 
             const itemsSubtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             const totalAmount = itemsSubtotal + DELIVERY_FEE;
@@ -880,48 +1020,50 @@
                 return;
             }
 
-            const newOrder = {
-                id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
-                userId: currentUser ? currentUser.id : "U1",
-                customerName: currentUser ? currentUser.name : "Guest Customer",
-                address: address,
-                items: selectedItems.map(item => {
-                    const product = products.find(candidate => candidate.id === item.productId);
-                    return {
-                        ...item,
-                        vendorId: item.vendorId || product?.vendorId,
-                        businessId: item.businessId || (product ? getProductBusinessId(product) : "")
-                    };
-                }),
-                itemsSubtotal: itemsSubtotal,
-                deliveryFee: DELIVERY_FEE,
-                totalAmount: totalAmount,
-                paymentStatus: paymentMethod === 'Cash on Delivery' ? 'Pending COD' : 'Paid Digital',
-                paymentMethod: paymentMethod,
-                orderStatus: 'Pending',
-                courierName: 'Unassigned',
-                timestamp: new Date().toLocaleTimeString()
-            };
+            submitButton.disabled = true;
+            let createdOrder;
+            try {
+                const result = await apiRequest("/api/orders/place", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        address,
+                        paymentMethod,
+                        items: selectedItems.map(item => ({
+                            productId: item.productId,
+                            quantity: item.quantity
+                        }))
+                    })
+                });
+                if (!result.order?.databaseId || !Array.isArray(result.order.items)) {
+                    throw new Error("The server did not confirm that your order was saved.");
+                }
+                createdOrder = result.order;
+            } catch (error) {
+                submitButton.disabled = false;
+                console.error("Could not create customer order.", error);
+                showToast(error.message || "Could not save your order.", "error");
+                return;
+            }
 
-            orders.unshift(newOrder);
-            const previousOrders = orders.slice(1);
-            const previousCart = cart;
+            orders.unshift(createdOrder);
             const selectedIds = new Set(selectedItems.map(item => item.productId));
-
             cart = cart.filter(item => !selectedIds.has(item.productId));
             try {
                 saveData();
             } catch (error) {
-                orders = previousOrders;
-                cart = previousCart;
-                console.error("Could not save customer order.", error);
-                showToast("Could not save your order. Browser storage may be full.", "error");
-                return;
+                console.error("Order was saved to MongoDB, but local cart data could not be updated.", error);
+                showToast("Your order was saved, but this browser could not update its cart.", "error");
             }
 
             sessionStorage.removeItem("atudtaCheckoutDraft");
             checkoutDraft = null;
-            showToast(`Order ${newOrder.id} placed successfully!`);
+            try {
+                await loadProductsFromDatabase();
+            } catch (error) {
+                console.error("Order was saved, but product stock could not be refreshed.", error);
+                showToast(error.message || "Order saved, but product stock could not be refreshed.", "error");
+            }
+            showToast(`Order ${createdOrder.id} placed successfully!`);
             window.location.assign("customer.html");
         }
 
@@ -939,6 +1081,39 @@
             );
         }
 
+        function formatOrderDateTime(value) {
+            if (!value) {
+                return "";
+            }
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
+        }
+
+        function getCustomerOrderStatusDetails(status) {
+            const statuses = {
+                Pending: {
+                    label: "Preparing",
+                    description: "The vendor is preparing your order.",
+                    badgeClass: "bg-amber-100 text-amber-700"
+                },
+                Packed: {
+                    label: "Packed · Ready for rider pickup",
+                    description: "Your order is packed and waiting for a rider.",
+                    badgeClass: "bg-blue-100 text-blue-700"
+                },
+                "Out for Delivery": {
+                    label: "Out for delivery",
+                    description: "A rider is bringing your order to you.",
+                    badgeClass: "bg-emerald-100 text-emerald-700"
+                }
+            };
+            return statuses[status] || {
+                label: "Status updated",
+                description: "Your order status has been updated.",
+                badgeClass: "bg-slate-100 text-slate-700"
+            };
+        }
+
         function renderCustomerOrderLists() {
             if (!document.getElementById("customerIncomingOrdersList") ||
                 !document.getElementById("customerReviewableOrdersList")) {
@@ -948,15 +1123,23 @@
             const incomingOrders = myOrders.filter(order => order.orderStatus !== "Delivered");
             const incomingList = document.getElementById("customerIncomingOrdersList");
             incomingList.innerHTML = incomingOrders.length
-                ? incomingOrders.map(order => `
+                ? incomingOrders.map(order => {
+                    const status = getCustomerOrderStatusDetails(order.orderStatus);
+                    const pickupAt = formatOrderDateTime(order.pickupAt);
+                    const estimatedDeliveryAt = formatOrderDateTime(order.estimatedDeliveryAt);
+                    return `
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                        <div class="flex justify-between font-bold text-slate-700">
+                        <div class="flex flex-wrap justify-between items-center gap-2 font-bold text-slate-700">
                             <span>${order.id}</span>
-                            <span class="text-spink-600">${order.orderStatus}</span>
+                            <span class="px-2 py-1 rounded-full ${status.badgeClass}">${status.label}</span>
                         </div>
                         <p class="text-slate-400 mt-1">${order.items.length} items • ₱${order.totalAmount.toFixed(2)}</p>
+                        <p class="text-slate-600 mt-2">${status.description}</p>
+                        ${pickupAt ? `<p class="text-slate-600 mt-2">Rider pickup: ${pickupAt}</p>` : ""}
+                        ${estimatedDeliveryAt ? `<p class="font-semibold text-emerald-700 mt-1">Estimated delivery: ${estimatedDeliveryAt}</p>` : ""}
                     </div>
-                `).join("")
+                `;
+                }).join("")
                 : `<p class="text-xs text-slate-400">No incoming orders.</p>`;
 
             const deliveredItems = myOrders
@@ -996,8 +1179,10 @@
                         const confirmedAt = order.deliveryConfirmedAt
                             ? new Date(order.deliveryConfirmedAt).toLocaleString()
                             : "Confirmation time unavailable";
+                        const pickupAt = formatOrderDateTime(order.pickupAt);
+                        const estimatedDeliveryAt = formatOrderDateTime(order.estimatedDeliveryAt);
                         const items = (order.items || []).map(item =>
-                            `<li>${escapeHTML(item.name)} × ${Number(item.quantity) || 0}</li>`
+                            `<li>${escapeHTML(item.name)} × ${formatQuantity(Number(item.quantity) || 0)} ${getStockUnitLabel(item.stockUnit)}</li>`
                         ).join("");
                         const photos = (Array.isArray(order.deliveryProof) ? order.deliveryProof : [])
                             .filter(photo => /^data:image\/(?:jpeg|png|webp);base64,/.test(photo.imageData || ""))
@@ -1021,6 +1206,8 @@
                                 </summary>
                                 <div class="mt-4 space-y-3 border-t border-slate-100 pt-4 text-sm">
                                     <p><span class="font-semibold">Address:</span> ${escapeHTML(order.address)}</p>
+                                    ${pickupAt ? `<p><span class="font-semibold">Rider pickup:</span> ${escapeHTML(pickupAt)}</p>` : ""}
+                                    ${estimatedDeliveryAt ? `<p><span class="font-semibold">Estimated delivery:</span> ${escapeHTML(estimatedDeliveryAt)}</p>` : ""}
                                     <p><span class="font-semibold">Payment:</span> ${escapeHTML(order.paymentMethod)}</p>
                                     <p><span class="font-semibold">Total:</span> ₱${(Number(order.totalAmount) || 0).toFixed(2)}</p>
                                     ${items ? `<div><p class="font-semibold">Items:</p><ul class="mt-1 list-inside list-disc text-slate-600">${items}</ul></div>` : ""}
@@ -1094,7 +1281,12 @@
             document.getElementById("detailProductName").textContent = product.name;
             document.getElementById("detailProductStore").textContent =
                 `Store: ${product.vendorName || vendor?.stallName || "AtudTA Market Vendor"}`;
-            document.getElementById("detailProductPrice").textContent = `₱${product.price.toFixed(2)}`;
+            document.getElementById("detailProductPrice").textContent =
+                `₱${product.price.toFixed(2)} / ${getStockUnitLabel(product.stockUnit)}`;
+            const stock = getProductStock(product);
+            document.getElementById("detailProductStock").textContent = stock === null
+                ? "Stock quantity not set"
+                : `${product.inStock && stock > 0 ? "Available" : "Out of stock"}: ${formatQuantity(stock)} ${getStockUnitLabel(product.stockUnit)}`;
             document.getElementById("productDetailsModal").classList.remove("hidden");
             renderProductReviews(preferredOrderId);
         }
@@ -1109,14 +1301,13 @@
         }
 
         // REVIEWS
-        document.getElementById("addReviewForm")?.addEventListener("submit", function(e) {
+        document.getElementById("addReviewForm")?.addEventListener("submit", async function(e) {
             e.preventDefault();
             if (!currentUser || currentUser.role !== "Customer") {
                 showToast("Log in as a customer to submit a review.", "error");
                 return;
             }
 
-            const rating = document.getElementById("reviewRating").value;
             const orderId = document.getElementById("reviewOrder").value;
             const productId = selectedProductId;
             const order = getCustomerOrders().find(customerOrder =>
@@ -1134,21 +1325,41 @@
                 return;
             }
 
-            reviews.unshift({
-                userId: currentUser.id,
-                orderId,
-                author: currentUser.name,
-                rating,
-                productId,
-                target: purchasedItem.name,
-                comment: document.getElementById("reviewComment").value.trim(),
-                date: "Just now"
-            });
-            saveData();
-            this.reset();
+            const comments = document.getElementById("reviewComment").value.trim();
+            if (!comments) {
+                showToast("Write a comment before submitting your review.", "error");
+                return;
+            }
+            const submissionError = document.getElementById("reviewSubmissionError");
+            submissionError.textContent = "";
+            submissionError.classList.add("hidden");
+            const submitButton = document.getElementById("submitReviewButton");
+            submitButton.disabled = true;
+            try {
+                const result = await apiRequest("/api/reviews/submit", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        orderID: order.databaseId,
+                        productID: productId,
+                        comments
+                    })
+                });
+                if (!result.review?.id) {
+                    throw new Error("The server did not confirm that your review was saved.");
+                }
+                reviews.unshift(result.review);
+                this.reset();
+            } catch (error) {
+                console.error("Could not save product review to MongoDB.", error);
+                submissionError.textContent = error.message || "Could not save your review. Please try again.";
+                submissionError.classList.remove("hidden");
+                showToast(error.message || "Could not save your review.", "error");
+                renderReviews();
+                return;
+            }
             openProductDetails(productId);
             renderReviews();
-            showToast("Thank you for your product review!");
+            showToast("Thank you! Your review was saved to MongoDB.");
         });
 
         document.getElementById("reviewOrder")?.addEventListener("change", renderReviewOptions);
@@ -1176,10 +1387,7 @@
                     const author = document.createElement("strong");
                     author.className = "text-slate-700";
                     author.textContent = review.author || "Customer";
-                    const rating = document.createElement("span");
-                    rating.className = "text-amber-500";
-                    rating.textContent = `${"⭐".repeat(Number(review.rating) || 0)} (${review.rating}/5)`;
-                    heading.append(author, rating);
+                    heading.append(author);
                     const comment = document.createElement("p");
                     comment.className = "mt-2 text-sm text-slate-600 whitespace-pre-wrap";
                     comment.textContent = review.comment || "";
@@ -1264,8 +1472,18 @@
             const name = document.getElementById("prodName").value.trim();
             const price = parseFloat(document.getElementById("prodPrice").value);
             const category = document.getElementById("prodCategory").value;
+            const stock = Number(document.getElementById("prodStock").value);
+            const stockUnit = document.getElementById("prodStockUnit").value;
             const imageFile = document.getElementById("prodImageFile").files[0];
             let imageData = "";
+
+            if (!Number.isFinite(price) || price < 0 ||
+                !Number.isFinite(stock) || stock < 0 ||
+                (stockUnit === "piece" && !Number.isInteger(stock)) ||
+                Math.abs(stock * 100 - Math.round(stock * 100)) > 1e-8) {
+                showToast("Enter a valid price and stock quantity. Piece stock must be a whole number; kilo stock allows up to 2 decimals.", "error");
+                return;
+            }
 
             if (imageFile) {
                 const allowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -1298,49 +1516,121 @@
                 }
             }
 
-            const newProduct = {
-                id: "P_" + Date.now(),
-                vendorId: currentUser.id,
-                businessId: getVendorBusinessId(currentUser),
-                vendorName: currentUser.stallName,
-                name, price, category, inStock: true, imageData
-            };
-            products.unshift(newProduct);
-
             try {
+                const result = await apiRequest("/api/products", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        productName: name,
+                        price,
+                        category,
+                        stock,
+                        stockUnit,
+                        imageData
+                    })
+                });
+                if (!result.product?.id) {
+                    throw new Error("The server did not return the saved product.");
+                }
+                products.unshift(result.product);
                 saveData();
             } catch (error) {
-                products = products.filter(product => product.id !== newProduct.id);
                 console.error("Could not save product.", error);
-                showToast("Could not save the product. Browser storage may be full.", "error");
+                showToast(error.message || "Could not save the product.", "error");
                 return;
             }
             toggleProductModal(false);
             e.target.reset();
-            showToast("New wet market product listed!");
+            showToast("Product saved to MongoDB!");
             renderAll();
         }
 
-        function toggleStock(prodId) {
+        async function toggleStock(prodId) {
             const product = products.find(item => item.id === prodId);
             if (!product || !isProductInCurrentVendorBusiness(product)) {
                 showToast("You can only change stock for products in your business.", "error");
                 return;
             }
-            products = products.map(p => p.id === prodId ? { ...p, inStock: !p.inStock } : p);
-            saveData();
-            renderAll();
+            try {
+                const result = await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, {
+                    method: "PUT",
+                    body: JSON.stringify({
+                        productName: product.name,
+                        price: product.price,
+                        category: product.category,
+                        stock: getProductStock(product) ?? 0,
+                        stockUnit: product.stockUnit || "piece",
+                        imageData: product.imageData || "",
+                        inStock: !product.inStock
+                    })
+                });
+                products = products.map(item => item.id === prodId ? result.product : item);
+                saveData();
+                renderAll();
+            } catch (error) {
+                console.error("Could not update product availability.", error);
+                showToast(error.message || "Could not update product availability.", "error");
+            }
         }
 
-        function deleteProduct(prodId) {
+        async function updateProductStock(prodId) {
+            const product = products.find(item => item.id === prodId);
+            if (!product || !isProductInCurrentVendorBusiness(product)) {
+                showToast("You can only change stock for products in your business.", "error");
+                return;
+            }
+
+            const input = window.prompt(
+                `Set available stock in ${getStockUnitLabel(product.stockUnit)}:`,
+                String(getProductStock(product) ?? 0)
+            );
+            if (input === null) {
+                return;
+            }
+            const stock = Number(input);
+            if (!Number.isFinite(stock) || stock < 0 ||
+                Math.abs(stock * 100 - Math.round(stock * 100)) > 1e-8 ||
+                (product.stockUnit !== "kg" && !Number.isInteger(stock))) {
+                showToast("Enter a non-negative stock amount with up to 2 decimals. Piece stock must be a whole number.", "error");
+                return;
+            }
+
+            try {
+                const result = await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, {
+                    method: "PUT",
+                    body: JSON.stringify({
+                        productName: product.name,
+                        price: product.price,
+                        category: product.category,
+                        stock,
+                        stockUnit: product.stockUnit || "piece",
+                        imageData: product.imageData || "",
+                        inStock: stock > 0
+                    })
+                });
+                products = products.map(item => item.id === prodId ? result.product : item);
+                saveData();
+                renderAll();
+            } catch (error) {
+                console.error("Could not update product stock.", error);
+                showToast(error.message || "Could not update product stock.", "error");
+            }
+        }
+
+        async function deleteProduct(prodId) {
             const product = products.find(item => item.id === prodId);
             if (!product || !isProductInCurrentVendorBusiness(product)) {
                 showToast("You can only delete products in your business.", "error");
                 return;
             }
-            products = products.filter(p => p.id !== prodId);
-            saveData();
-            renderAll();
+            try {
+                await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, { method: "DELETE" });
+                products = products.filter(item => item.id !== prodId);
+                saveData();
+                renderAll();
+            } catch (error) {
+                console.error("Could not delete product.", error);
+                showToast(error.message || "Could not delete product.", "error");
+            }
         }
 
         function renderVendorDashboard() {
@@ -1366,7 +1656,10 @@
 
             // Inventory Table
             const table = document.getElementById("vendorProductsTable");
-            table.innerHTML = vendorProducts.map(p => `
+            table.innerHTML = vendorProducts.map(p => {
+                const stock = getProductStock(p);
+                const isAvailable = p.inStock && (stock === null || stock > 0);
+                return `
                 <tr>
                     <td class="p-2.5 font-semibold text-slate-800">
                         <div class="flex items-center gap-2">
@@ -1374,18 +1667,20 @@
                             <span>${p.name}</span>
                         </div>
                     </td>
-                    <td class="p-2.5 font-bold text-spink-600">₱${p.price.toFixed(2)}</td>
+                    <td class="p-2.5 font-bold text-spink-600">₱${p.price.toFixed(2)} / ${getStockUnitLabel(p.stockUnit)}</td>
                     <td class="p-2.5">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${p.inStock ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
-                            ${p.inStock ? 'In Stock' : 'Out'}
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
+                            ${stock === null ? 'Stock not set' : `${formatQuantity(stock)} ${getStockUnitLabel(p.stockUnit)} · ${isAvailable ? 'In Stock' : 'Out'}`}
                         </span>
                     </td>
                     <td class="p-2.5 text-right space-x-1">
+                        <button onclick="updateProductStock('${p.id}')" class="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">Set Stock</button>
                         <button onclick="toggleStock('${p.id}')" class="text-xs px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">Toggle</button>
                         <button onclick="deleteProduct('${p.id}')" class="text-xs px-2 py-1 bg-rose-100 text-rose-600 rounded hover:bg-rose-200">Delete</button>
                     </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
 
             // Incoming Orders Pipeline
             const pipeline = document.getElementById("vendorOrdersPipeline");
@@ -1397,6 +1692,7 @@
             pipeline.innerHTML = vendorOrders.map(o => {
                 const businessItems = getOrderItemsForCurrentVendorBusiness(o);
                 const businessSubtotal = businessItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                const vendorHasPacked = (o.packedBy || []).includes(currentUser.id);
                 return `
                 <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                     <div class="flex justify-between items-center text-xs">
@@ -1405,14 +1701,16 @@
                     </div>
                     <p class="text-xs text-slate-500">Address: ${o.address}</p>
                     <div class="text-xs text-slate-600">
-                        ${businessItems.map(i => `${i.name} (${i.quantity})`).join(', ')}
+                        ${businessItems.map(i => `${i.name} (${formatQuantity(i.quantity)} ${getStockUnitLabel(i.stockUnit)})`).join(', ')}
                     </div>
                     <div class="flex justify-between items-center pt-2">
                         <span class="font-bold text-spink-600 text-sm">Business items: ₱${businessSubtotal.toFixed(2)}</span>
-                        ${o.orderStatus === 'Pending' ? `
+                        ${o.orderStatus === 'Pending' && !vendorHasPacked ? `
                             <button onclick="updateOrderStatus('${o.id}', 'Packed')" class="px-3 py-1 bg-sage-600 text-white text-xs font-bold rounded-lg hover:bg-sage-700">
                                 Pack Order
                             </button>
+                        ` : o.orderStatus === 'Pending' ? `
+                            <span class="text-xs text-amber-700 font-bold">Your items are packed; waiting for other vendors.</span>
                         ` : `<span class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-check"></i> Ready for Rider Pickup</span>`}
                     </div>
                 </div>
@@ -1420,20 +1718,35 @@
             }).join('');
         }
 
-        function updateOrderStatus(orderId, status) {
+        async function updateOrderStatus(orderId, status) {
             const order = orders.find(item => item.id === orderId);
             if (currentUser?.role === "Vendor" && (!order || !isOrderInCurrentVendorBusiness(order))) {
                 showToast("You can only update orders containing products from your business.", "error");
                 return;
             }
-            if (status === "Delivered" && (!Array.isArray(order?.deliveryProof) || order.deliveryProof.length === 0)) {
-                showToast("Upload delivery confirmation photos before marking this order delivered.", "error");
+            if (!order?.databaseId) {
+                showToast("This order is not connected to the database. Refresh the page and try again.", "error");
                 return;
             }
-            orders = orders.map(o => o.id === orderId ? { ...o, orderStatus: status } : o);
-            saveData();
-            showToast(`Order ${orderId} status changed to ${status}`);
-            renderAll();
+            try {
+                const result = await apiRequest(`/api/orders/${encodeURIComponent(order.databaseId)}/status`, {
+                    method: "PUT",
+                    body: JSON.stringify({ status })
+                });
+                if (!result.order?.databaseId) {
+                    throw new Error("The server did not confirm the order update.");
+                }
+                orders = orders.map(item => item.id === orderId ? result.order : item);
+                const waitingForOtherVendors =
+                    status === "Packed" && result.order.orderStatus === "Pending";
+                showToast(waitingForOtherVendors
+                    ? `Your items in ${orderId} are packed; waiting for other vendors.`
+                    : `Order ${orderId} status changed to ${result.order.orderStatus}.`);
+                renderAll();
+            } catch (error) {
+                console.error("Could not update order status in MongoDB.", error);
+                showToast(error.message || "Could not update the order status.", "error");
+            }
         }
 
         // ==========================================
@@ -1509,7 +1822,7 @@
             ));
         }
 
-        function acceptRiderDelivery(orderId) {
+        async function acceptRiderDelivery(orderId) {
             if (!currentUser || currentUser.role !== "Rider" || !isRiderDuty) {
                 showToast("Go online as a rider before accepting a delivery.", "error");
                 return;
@@ -1520,7 +1833,7 @@
             }
 
             const order = orders.find(item => item.id === orderId);
-            if (!order || order.orderStatus !== "Packed" ||
+            if (!order?.databaseId || order.orderStatus !== "Packed" ||
                 order.courierName !== "Unassigned" || order.courierId ||
                 (order.declinedBy || []).includes(currentUser.id)) {
                 showToast("This delivery is no longer available to accept.", "error");
@@ -1528,33 +1841,46 @@
                 return;
             }
 
-            orders = orders.map(item => item.id === orderId
-                ? { ...item, courierName: currentUser.name, courierId: currentUser.id }
-                : item);
-            saveData();
-            showToast(`Delivery ${orderId} accepted.`);
-            renderAll();
+            try {
+                const result = await apiRequest(`/api/orders/${encodeURIComponent(order.databaseId)}/accept`, {
+                    method: "PUT"
+                });
+                if (!result.order?.databaseId) {
+                    throw new Error("The server did not confirm the delivery assignment.");
+                }
+                orders = orders.map(item => item.id === orderId ? result.order : item);
+                showToast(`Delivery ${orderId} accepted.`);
+                renderAll();
+            } catch (error) {
+                console.error("Could not accept delivery in MongoDB.", error);
+                showToast(error.message || "Could not accept this delivery.", "error");
+            }
         }
 
-        function declineRiderDelivery(orderId) {
+        async function declineRiderDelivery(orderId) {
             if (!currentUser || currentUser.role !== "Rider" || !isRiderDuty) {
                 showToast("Go online as a rider before responding to delivery offers.", "error");
                 return;
             }
             const order = orders.find(item => item.id === orderId);
-            if (!order || order.orderStatus !== "Packed" ||
+            if (!order?.databaseId || order.orderStatus !== "Packed" ||
                 order.courierName !== "Unassigned" || order.courierId) {
                 showToast("This delivery is no longer available to decline.", "error");
                 renderAll();
                 return;
             }
 
-            orders = orders.map(item => item.id === orderId
-                ? { ...item, declinedBy: [...new Set([...(item.declinedBy || []), currentUser.id])] }
-                : item);
-            saveData();
-            showToast(`Delivery ${orderId} declined.`);
-            renderAll();
+            try {
+                await apiRequest(`/api/orders/${encodeURIComponent(order.databaseId)}/decline`, {
+                    method: "PUT"
+                });
+                orders = orders.filter(item => item.id !== orderId);
+                showToast(`Delivery ${orderId} declined.`);
+                renderAll();
+            } catch (error) {
+                console.error("Could not decline delivery in MongoDB.", error);
+                showToast(error.message || "Could not decline this delivery.", "error");
+            }
         }
 
         function updateRiderDeliveryStatus(orderId, status) {
@@ -1568,140 +1894,6 @@
                 return;
             }
             updateOrderStatus(orderId, status);
-        }
-
-        function updateDeliveryProofSelection(orderId) {
-            const input = document.getElementById(`deliveryProof-${orderId}`);
-            const button = document.getElementById(`markDelivered-${orderId}`);
-            const status = document.getElementById(`deliveryProofStatus-${orderId}`);
-            if (!input || !button || !status) {
-                return;
-            }
-
-            const files = Array.from(input.files || []);
-            const invalidFile = files.find(file =>
-                !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 1024 * 1024
-            );
-            if (files.length > 3) {
-                status.textContent = "Choose no more than 3 photos.";
-                button.disabled = true;
-                return;
-            }
-            if (invalidFile) {
-                status.textContent = !["image/jpeg", "image/png", "image/webp"].includes(invalidFile.type)
-                    ? "Choose a JPG, PNG, or WEBP photo."
-                    : `${invalidFile.name} is larger than 1 MB.`;
-                button.disabled = true;
-                return;
-            }
-
-            button.disabled = files.length === 0;
-            status.textContent = files.length
-                ? `${files.length} photo${files.length === 1 ? "" : "s"} selected.`
-                : "Upload at least one photo to enable delivery confirmation.";
-        }
-
-        function readDeliveryProofFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onerror = () => reject(new Error(`Could not read ${file.name}. Please try another photo.`));
-                reader.onload = () => {
-                    const image = new Image();
-                    image.onerror = () => reject(new Error(`Could not open ${file.name}. Please try another photo.`));
-                    image.onload = () => {
-                        const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
-                        const canvas = document.createElement("canvas");
-                        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-                        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-                        const context = canvas.getContext("2d");
-                        if (!context) {
-                            reject(new Error("Your browser could not process the delivery photo."));
-                            return;
-                        }
-                        context.fillStyle = "#FFFFFF";
-                        context.fillRect(0, 0, canvas.width, canvas.height);
-                        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-                        try {
-                            resolve({
-                                imageData: canvas.toDataURL("image/jpeg", 0.75),
-                                fileName: file.name,
-                                uploadedAt: new Date().toISOString()
-                            });
-                        } catch (error) {
-                            reject(new Error(`Could not process ${file.name}. Please try another photo.`));
-                        }
-                    };
-                    image.src = reader.result;
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        async function confirmRiderDelivery(orderId) {
-            const order = orders.find(item => item.id === orderId);
-            const input = document.getElementById(`deliveryProof-${orderId}`);
-            if (!currentUser || currentUser.role !== "Rider" || !order ||
-                !isAssignedToCurrentRider(order) || order.orderStatus !== "Out for Delivery" || !input) {
-                showToast("This delivery cannot be confirmed by your rider account.", "error");
-                renderAll();
-                return;
-            }
-
-            const files = Array.from(input.files || []);
-            if (files.length < 1 || files.length > 3) {
-                showToast("Upload between 1 and 3 delivery photos before marking delivered.", "error");
-                return;
-            }
-            const invalidFile = files.find(file =>
-                !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 1024 * 1024
-            );
-            if (invalidFile) {
-                showToast(!["image/jpeg", "image/png", "image/webp"].includes(invalidFile.type)
-                    ? "Only JPG, PNG, or WEBP photos can be used as delivery proof."
-                    : `${invalidFile.name} is larger than 1 MB.`, "error");
-                return;
-            }
-
-            const button = document.getElementById(`markDelivered-${orderId}`);
-            const riderId = currentUser.id;
-            button.disabled = true;
-            button.textContent = "Saving photos...";
-            try {
-                const deliveryProof = await Promise.all(files.map(readDeliveryProofFile));
-                const latestOrder = orders.find(item => item.id === orderId);
-                if (!currentUser || currentUser.id !== riderId || !latestOrder ||
-                    !isAssignedToCurrentRider(latestOrder) || latestOrder.orderStatus !== "Out for Delivery") {
-                    showToast("The delivery changed before the photos could be saved. Please review the order.", "error");
-                    renderAll();
-                    return;
-                }
-
-                const previousOrders = orders;
-                orders = orders.map(item => item.id === orderId
-                    ? {
-                        ...item,
-                        orderStatus: "Delivered",
-                        deliveryProof,
-                        deliveryConfirmedAt: new Date().toISOString()
-                    }
-                    : item);
-                try {
-                    localStorage.setItem("atudtaOrders", JSON.stringify(orders));
-                } catch (error) {
-                    orders = previousOrders;
-                    console.error("Could not save delivery proof.", error);
-                    showToast("Could not save delivery photos. Browser storage may be full; remove some stored data and try again.", "error");
-                    renderAll();
-                    return;
-                }
-                showToast(`Delivery ${orderId} confirmed with ${deliveryProof.length} photo${deliveryProof.length === 1 ? "" : "s"}.`);
-                renderAll();
-            } catch (error) {
-                console.error("Could not read delivery proof photos.", error);
-                showToast(error.message || "Could not read the delivery photos. Please try again.", "error");
-                button.textContent = "Mark Delivered";
-                updateDeliveryProofSelection(orderId);
-            }
         }
 
         function toggleRiderDuty() {
@@ -1777,6 +1969,8 @@
                     <div>
                         <p class="font-bold text-sm text-slate-800">${o.customerName}</p>
                         <p class="text-xs text-slate-500"><i class="fa-solid fa-location-dot text-rose-500"></i> ${o.address}</p>
+                        ${o.pickupAt ? `<p class="text-xs text-slate-600 mt-1">Pickup: ${formatOrderDateTime(o.pickupAt)}</p>` : ""}
+                        ${o.estimatedDeliveryAt ? `<p class="text-xs font-semibold text-emerald-700 mt-1">Estimated arrival: ${formatOrderDateTime(o.estimatedDeliveryAt)}</p>` : ""}
                     </div>
                     <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-100">
                         <span class="font-extrabold text-slate-700">Collect COD: ₱${o.totalAmount.toFixed(2)}</span>
@@ -1785,17 +1979,8 @@
                                 Start Delivery
                             </button>
                         ` : `
-                            <label for="deliveryProof-${o.id}" class="block w-full text-xs font-semibold text-slate-600">
-                                Delivery confirmation photos (1-3 photos, max 1 MB each)
-                            </label>
-                            <input id="deliveryProof-${o.id}" type="file" accept="image/jpeg,image/png,image/webp" multiple
-                                onchange="updateDeliveryProofSelection('${o.id}')"
-                                class="w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:font-bold file:text-emerald-700 hover:file:bg-emerald-100">
-                            <p id="deliveryProofStatus-${o.id}" class="w-full text-xs text-slate-500" aria-live="polite">
-                                Upload at least one photo to enable delivery confirmation.
-                            </p>
-                            <button id="markDelivered-${o.id}" onclick="confirmRiderDelivery('${o.id}')" disabled
-                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition">
+                            <button onclick="updateRiderDeliveryStatus('${o.id}', 'Delivered')"
+                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition">
                                 Mark Delivered
                             </button>
                         `}
@@ -1829,7 +2014,7 @@
                         ? new Date(order.deliveryConfirmedAt).toLocaleString()
                         : "Confirmation time unavailable";
                     const items = (order.items || []).map(item =>
-                        `<li>${escapeHTML(item.name)} × ${Number(item.quantity) || 0}</li>`
+                        `<li>${escapeHTML(item.name)} × ${formatQuantity(Number(item.quantity) || 0)} ${getStockUnitLabel(item.stockUnit)}</li>`
                     ).join("");
                     const photos = (Array.isArray(order.deliveryProof) ? order.deliveryProof : [])
                         .filter(photo => /^data:image\/(?:jpeg|png|webp);base64,/.test(photo.imageData || ""))
@@ -1887,8 +2072,14 @@
         // ==========================================
         // INITIALIZATION ON LOAD
         // ==========================================
-        window.addEventListener("load", () => {
+        window.addEventListener("load", async () => {
             const savedSession = sessionStorage.getItem("atudtaSession");
+            const authToken = sessionStorage.getItem("atudtaAuthToken");
+            if (savedSession && !authToken) {
+                sessionStorage.removeItem("atudtaSession");
+                window.location.replace("login.html");
+                return;
+            }
             if (savedSession) {
                 currentUser = users.find(user => user.id === savedSession || user.email === savedSession) || null;
             }
@@ -1927,6 +2118,45 @@
             document.getElementById("headerUserLabel").textContent =
                 `${currentUser.name} (${currentUser.role}) - ${currentUser.barangay || "Polangui"}`;
             renderAuthHeaderButtons();
+            try {
+                await loadProductsFromDatabase();
+            } catch (error) {
+                console.error("Could not load products from MongoDB.", error);
+                showToast(error.message || "Could not load products from MongoDB.", "error");
+            }
+            try {
+                await loadOrdersFromDatabase();
+            } catch (error) {
+                orders = [];
+                console.error("Could not load orders from MongoDB.", error);
+                showToast(error.message || "Could not load orders from MongoDB.", "error");
+            }
+            if (currentUser.role === "Customer") {
+                try {
+                    await loadReviewsFromDatabase();
+                } catch (error) {
+                    reviews = [];
+                    console.error("Could not load reviews from MongoDB.", error);
+                    showToast(error.message || "Could not load reviews from MongoDB.", "error");
+                }
+            }
+            let orderRefreshErrorShown = false;
+            window.setInterval(async () => {
+                if (document.hidden || !["customer", "vendor", "rider", "delivery"].includes(page)) {
+                    return;
+                }
+                try {
+                    await loadOrdersFromDatabase();
+                    orderRefreshErrorShown = false;
+                    renderAll();
+                } catch (error) {
+                    console.error("Could not refresh orders from MongoDB.", error);
+                    if (!orderRefreshErrorShown) {
+                        showToast(error.message || "Could not refresh orders from MongoDB.", "error");
+                        orderRefreshErrorShown = true;
+                    }
+                }
+            }, 15000);
             if (page === "reviews") {
                 const params = new URLSearchParams(window.location.search);
                 const productId = params.get("product") || sessionStorage.getItem("atudtaReviewProductId");
