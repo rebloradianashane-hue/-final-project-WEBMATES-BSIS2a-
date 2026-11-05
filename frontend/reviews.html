@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delivery Queue - AtudTA Wet Market Platform</title>
+    <title>Product Reviews - AtudTA Wet Market Platform</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -43,7 +43,7 @@
     </script>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body data-app-page="delivery" class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+<body data-app-page="reviews" class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
     <!-- TOP HEADER -->
     <header class="bg-[#059669] text-white shadow-md sticky top-0 z-40">
@@ -79,75 +79,53 @@
         <!-- ========================================== -->
         <!-- 1. LOGIN SCREEN                            -->
         <!-- ========================================== -->
-        <section id="riderPage" class="space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div>
-                    <h2 class="text-2xl font-bold text-sage-800">🏍️ SwiftCourier Rider App</h2>
-                    <p class="text-sm text-slate-500">Delivery Partner: <strong class="userName text-blue-600">Rider</strong></p>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="text-xs font-bold text-slate-500 uppercase">Duty Status:</span>
-                    <button id="riderDutyToggleBtn" onclick="toggleRiderDuty()" class="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-500 text-white shadow">
-                        🟢 Online & Available
-                    </button>
-                </div>
-            </div>
-
-            <!-- Rider Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="glass-card p-4 rounded-2xl border-l-4 border-blue-500">
-                    <p class="text-xs font-bold text-slate-400 uppercase">Delivery Jobs</p>
-                    <p id="riderMetricAssigned" class="text-2xl font-black text-blue-600">0</p>
-                </div>
-                <div class="glass-card p-4 rounded-2xl border-l-4 border-emerald-500">
-                    <p class="text-xs font-bold text-slate-400 uppercase">Completed Today</p>
-                    <p id="riderMetricCompleted" class="text-2xl font-black text-emerald-600">0</p>
-                </div>
-                <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-500">
-                    <p class="text-xs font-bold text-slate-400 uppercase">COD Money Collected</p>
-                    <p id="riderMetricCOD" class="text-2xl font-black text-amber-600">₱0.00</p>
-                </div>
-            </div>
-
-            <div class="glass-card p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-location-crosshairs text-emerald-600"></i> Your Current Location
-                    </h3>
-                    <p id="riderLocationStatus" class="text-sm text-slate-500 mt-1" aria-live="polite">
-                        Get your location to review it before accepting a delivery.
-                    </p>
-                    <a id="riderLocationMapLink" class="hidden mt-2 inline-block text-sm text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
-                        View on map
-                    </a>
-                </div>
-                <button id="riderLocationButton" type="button" onclick="updateRiderLocation()"
-                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition">
-                    <i class="fa-solid fa-location-crosshairs mr-1"></i> Get Current Location
+        <!-- PRODUCT DETAILS AND REVIEWS -->
+        <div id="productDetailsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+                <button type="button" onclick="closeProductDetails()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold" aria-label="Close product details">
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
-            </div>
-
-            <!-- Delivery Route Queue -->
-            <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
-                <h3 class="font-bold text-lg text-sage-800 flex items-center gap-2">
-                    <i class="fa-solid fa-route text-blue-600"></i> Active Delivery Queue (Polangui Routes)
-                </h3>
-                <div id="riderDeliveriesQueue" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- JS Populated -->
+                <div class="pr-8">
+                    <div id="detailProductImage" class="w-full h-48 rounded-xl bg-sage-50 flex items-center justify-center text-5xl overflow-hidden"></div>
+                    <span id="detailProductCategory" class="inline-block mt-4 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md"></span>
+                    <h2 id="detailProductName" class="text-2xl font-bold text-slate-800 mt-2"></h2>
+                    <p id="detailProductStore" class="text-sm text-slate-500 mt-1"></p>
+                    <p id="detailProductPrice" class="text-spink-600 font-extrabold text-xl mt-2"></p>
                 </div>
-            </div>
 
-            <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
-                <h3 class="font-bold text-lg text-sage-800 flex items-center gap-2">
-                    <i class="fa-solid fa-circle-check text-emerald-600"></i> Completed Deliveries
-                </h3>
-                <p class="text-sm text-slate-500">All customer orders marked delivered appear here. Select an order to view its details and delivery photos.</p>
-                <div id="riderCompletedDeliveries" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- JS Populated -->
-                </div>
-            </div>
-        </section>
+                <section class="mt-8 border-t border-slate-200 pt-5">
+                    <h3 class="font-bold text-lg text-sage-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-star text-amber-400"></i> Customer Reviews
+                    </h3>
+                    <div id="detailProductReviews" class="space-y-3">
+                        <p class="text-sm text-slate-400">No reviews for this product yet.</p>
+                    </div>
+                </section>
 
+                <form id="addReviewForm" class="hidden mt-6 bg-slate-50 p-4 rounded-xl space-y-3">
+                    <h3 class="font-bold text-sage-800">Review this delivered product</h3>
+                    <div>
+                        <label for="reviewOrder" class="block text-xs font-bold text-slate-500 uppercase mb-1">Delivered Order</label>
+                        <select id="reviewOrder" required class="w-full p-2 border rounded-lg text-sm"></select>
+                    </div>
+                    <div>
+                        <label for="reviewRating" class="block text-xs font-bold text-slate-500 uppercase mb-1">Rating</label>
+                        <select id="reviewRating" class="w-full p-2 border rounded-lg text-sm">
+                            <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+                            <option value="4">⭐⭐⭐⭐ (4/5)</option>
+                            <option value="3">⭐⭐⭐ (3/5)</option>
+                        </select>
+                    </div>
+                    <textarea id="reviewComment" rows="3" placeholder="Write feedback about this product..." required class="w-full p-2 border rounded-lg text-sm"></textarea>
+                    <p id="reviewEligibilityMessage" class="text-xs text-slate-500"></p>
+                    <button id="submitReviewButton" type="submit" class="bg-sage-600 text-white font-bold px-4 py-2 rounded-lg text-sm hover:bg-sage-700 transition">Submit Review</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- 5. VENDOR DASHBOARD (OmniVendor)          -->
+        <!-- ========================================== -->
 
     </main>
         <!-- PROFILE MODAL -->

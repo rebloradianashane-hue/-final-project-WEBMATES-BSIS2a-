@@ -122,7 +122,7 @@
                     </div>
                     <div id="customerReviewableOrdersPanel" class="glass-card p-5 rounded-2xl shadow-sm hidden">
                         <h3 class="font-bold text-sage-800 mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-comment-dots text-emerald-600"></i> Delivered: Ready to Review
+                            <i class="fa-solid fa-star text-amber-500"></i> Delivered: Ready to Review
                         </h3>
                         <div id="customerReviewableOrdersList" class="space-y-3 max-h-60 overflow-y-auto pr-1">
                             <!-- Populated dynamically -->
@@ -160,12 +160,11 @@
                     <h2 id="detailProductName" class="text-2xl font-bold text-slate-800 mt-2"></h2>
                     <p id="detailProductStore" class="text-sm text-slate-500 mt-1"></p>
                     <p id="detailProductPrice" class="text-spink-600 font-extrabold text-xl mt-2"></p>
-                    <p id="detailProductStock" class="text-sm font-semibold text-sage-700 mt-1"></p>
                 </div>
 
                 <section class="mt-8 border-t border-slate-200 pt-5">
                     <h3 class="font-bold text-lg text-sage-800 mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-comment-dots text-emerald-600"></i> Customer Reviews
+                        <i class="fa-solid fa-star text-amber-400"></i> Customer Reviews
                     </h3>
                     <div id="detailProductReviews" class="space-y-3">
                         <p class="text-sm text-slate-400">No reviews for this product yet.</p>
@@ -177,6 +176,14 @@
                     <div>
                         <label for="reviewOrder" class="block text-xs font-bold text-slate-500 uppercase mb-1">Delivered Order</label>
                         <select id="reviewOrder" required class="w-full p-2 border rounded-lg text-sm"></select>
+                    </div>
+                    <div>
+                        <label for="reviewRating" class="block text-xs font-bold text-slate-500 uppercase mb-1">Rating</label>
+                        <select id="reviewRating" class="w-full p-2 border rounded-lg text-sm">
+                            <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+                            <option value="4">⭐⭐⭐⭐ (4/5)</option>
+                            <option value="3">⭐⭐⭐ (3/5)</option>
+                        </select>
                     </div>
                     <textarea id="reviewComment" rows="3" placeholder="Write feedback about this product..." required class="w-full p-2 border rounded-lg text-sm"></textarea>
                     <p id="reviewEligibilityMessage" class="text-xs text-slate-500"></p>

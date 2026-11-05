@@ -156,12 +156,12 @@
                 <form id="addProductForm" onsubmit="handleSaveProduct(event)" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Product Name</label>
-                        <input id="prodName" type="text" placeholder="e.g. Fresh tomatoes" required class="w-full px-3 py-2 border rounded-xl text-sm">
+                        <input id="prodName" type="text" placeholder="e.g. Product name (1kg)" required class="w-full px-3 py-2 border rounded-xl text-sm">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Price (₱)</label>
-                            <input id="prodPrice" type="number" min="0" step="0.01" placeholder="180.00" required class="w-full px-3 py-2 border rounded-xl text-sm">
+                            <input id="prodPrice" type="number" step="0.01" placeholder="180.00" required class="w-full px-3 py-2 border rounded-xl text-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
@@ -171,20 +171,6 @@
                                 <option value="Vegetables">Vegetables</option>
                                 <option value="Fruits">Fruits</option>
                                 <option value="Spices">Spices</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label for="prodStock" class="block text-xs font-semibold text-slate-600 mb-1">Stock quantity</label>
-                            <input id="prodStock" type="number" min="0" step="0.01" placeholder="e.g. 10" required class="w-full px-3 py-2 border rounded-xl text-sm">
-                        </div>
-                        <div>
-                            <label for="prodStockUnit" class="block text-xs font-semibold text-slate-600 mb-1">Stock unit</label>
-                            <select id="prodStockUnit" required class="w-full px-3 py-2 border rounded-xl text-sm bg-white">
-                                <option value="piece">Piraso (pcs)</option>
-                                <option value="kg">Kilo (kg)</option>
                             </select>
                         </div>
                     </div>

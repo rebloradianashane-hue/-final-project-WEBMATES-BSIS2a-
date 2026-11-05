@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rider Dashboard - AtudTA Wet Market Platform</title>
+    <title>Delivery Queue - AtudTA Wet Market Platform</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -43,7 +43,7 @@
     </script>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body data-app-page="rider" class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+<body data-app-page="delivery" class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
     <!-- TOP HEADER -->
     <header class="bg-[#059669] text-white shadow-md sticky top-0 z-40">
@@ -79,18 +79,64 @@
         <!-- ========================================== -->
         <!-- 1. LOGIN SCREEN                            -->
         <!-- ========================================== -->
-
         <section id="riderPage" class="space-y-6">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h2 class="text-2xl font-bold text-sage-800">🏍️ SwiftCourier Rider App</h2>
-                <p class="text-sm text-slate-500 mt-1">Delivery Partner: <strong class="userName text-blue-600">Rider</strong></p>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div>
+                    <h2 class="text-2xl font-bold text-sage-800">🏍️ SwiftCourier Rider App</h2>
+                    <p class="text-sm text-slate-500">Delivery Partner: <strong class="userName text-blue-600">Rider</strong></p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Duty Status:</span>
+                    <button id="riderDutyToggleBtn" onclick="toggleRiderDuty()" class="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-500 text-white shadow">
+                        🟢 Online & Available
+                    </button>
+                </div>
             </div>
+
+            <!-- Rider Stats -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="glass-card p-4 rounded-2xl border-l-4 border-blue-500"><p class="text-xs font-bold text-slate-400 uppercase">Delivery Jobs</p><p id="riderMetricAssigned" class="text-2xl font-black text-blue-600">0</p></div>
-                <div class="glass-card p-4 rounded-2xl border-l-4 border-emerald-500"><p class="text-xs font-bold text-slate-400 uppercase">Completed</p><p id="riderMetricCompleted" class="text-2xl font-black text-emerald-600">0</p></div>
-                <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-500"><p class="text-xs font-bold text-slate-400 uppercase">COD Money Collected</p><p id="riderMetricCOD" class="text-2xl font-black text-amber-600">₱0.00</p></div>
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-blue-500">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Delivery Jobs</p>
+                    <p id="riderMetricAssigned" class="text-2xl font-black text-blue-600">0</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-emerald-500">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Completed Today</p>
+                    <p id="riderMetricCompleted" class="text-2xl font-black text-emerald-600">0</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-500">
+                    <p class="text-xs font-bold text-slate-400 uppercase">COD Money Collected</p>
+                    <p id="riderMetricCOD" class="text-2xl font-black text-amber-600">₱0.00</p>
+                </div>
             </div>
-            <a href="delivery.html" class="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition"><i class="fa-solid fa-route"></i> Open Delivery Queue</a>
+
+            <div class="glass-card p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-location-crosshairs text-emerald-600"></i> Your Current Location
+                    </h3>
+                    <p id="riderLocationStatus" class="text-sm text-slate-500 mt-1" aria-live="polite">
+                        Get your location to review it before accepting a delivery.
+                    </p>
+                    <a id="riderLocationMapLink" class="hidden mt-2 inline-block text-sm text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                        View on map
+                    </a>
+                </div>
+                <button id="riderLocationButton" type="button" onclick="updateRiderLocation()"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition">
+                    <i class="fa-solid fa-location-crosshairs mr-1"></i> Get Current Location
+                </button>
+            </div>
+
+            <!-- Delivery Route Queue -->
+            <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
+                <h3 class="font-bold text-lg text-sage-800 flex items-center gap-2">
+                    <i class="fa-solid fa-route text-blue-600"></i> Active Delivery Queue (Polangui Routes)
+                </h3>
+                <div id="riderDeliveriesQueue" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- JS Populated -->
+                </div>
+            </div>
+
             <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
                 <h3 class="font-bold text-lg text-sage-800 flex items-center gap-2">
                     <i class="fa-solid fa-circle-check text-emerald-600"></i> Completed Deliveries
@@ -101,6 +147,8 @@
                 </div>
             </div>
         </section>
+
+
     </main>
         <!-- PROFILE MODAL -->
         <div id="profileModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
