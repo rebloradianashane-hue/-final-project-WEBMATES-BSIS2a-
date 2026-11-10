@@ -3,9 +3,10 @@
         // ==========================================
         
         const localFrontendHosts = ["localhost", "127.0.0.1"];
-        const API_BASE_URL = localFrontendHosts.includes(window.location.hostname)
-            ? "http://localhost:5000"
-            : "https://final-project-webmates-bsis2a-l8zw.onrender.com";
+        const API_BASE_URL = localFrontendHosts.includes(window.location.hostname) &&
+            window.location.port !== "" && window.location.port !== "5000"
+            ? `http://${window.location.hostname}:5000`
+            : "";
         const initialProducts = [];
         const removedProductIds = new Set(["P1", "P2", "P3", "P4"]);
 
@@ -315,22 +316,11 @@
 
                 const profileButton = document.createElement("button");
                 profileButton.type = "button";
-                profileButton.className = "w-10 h-10 rounded-full overflow-hidden bg-sage-100 text-sage-700 border-2 border-white shadow hover:ring-2 hover:ring-spink-300 transition flex items-center justify-center";
-                profileButton.setAttribute("aria-label", "View profile");
-                profileButton.title = "View profile";
-                profileButton.addEventListener("click", () => toggleProfileModal(true));
-
-                if (currentUser.profilePicture) {
-                    const image = document.createElement("img");
-                    image.src = currentUser.profilePicture;
-                    image.alt = "";
-                    image.className = "w-full h-full object-cover";
-                    profileButton.appendChild(image);
-                } else {
-                    const icon = document.createElement("i");
-                    icon.className = "fa-solid fa-user";
-                    profileButton.appendChild(icon);
-                }
+                profileButton.className = "w-10 h-10 rounded-full bg-white/15 text-white shadow hover:bg-white/25 transition flex items-center justify-center";
+                profileButton.setAttribute("aria-label", "Settings");
+                profileButton.title = "Settings";
+                profileButton.innerHTML = '<i class="fa-solid fa-gear text-lg" aria-hidden="true"></i>';
+                profileButton.addEventListener("click", () => toggleSettingsModal(true));
 
                 const logoutButton = document.createElement("button");
                 logoutButton.type = "button";
@@ -338,12 +328,6 @@
                 logoutButton.textContent = "Logout";
                 logoutButton.addEventListener("click", logout);
                 container.append(profileButton, logoutButton);
-            } else {
-                container.innerHTML = `
-                    <button onclick="showPage('loginPage')" class="text-xs bg-spink-400 hover:bg-spink-600 text-white font-bold px-3 py-1.5 rounded-lg transition">
-                        Log In
-                    </button>
-                `;
             }
         }
 
@@ -364,6 +348,363 @@
             document.getElementById("profileRoleDetails").appendChild(row);
         }
 
+        function profileAddressValue(user) {
+            return user.address ||
+                [user.houseNumber, user.streetName, user.purok, user.barangay, "Polangui", "Albay"]
+                    .filter(Boolean).join(", ");
+        }
+
+        function createSettingsMenuItem(label, description, iconClass, onClick, className = "") {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50 ${className}`;
+            const icon = document.createElement("i");
+            icon.className = `${iconClass} w-5 text-center text-emerald-700`;
+            icon.setAttribute("aria-hidden", "true");
+            const text = document.createElement("span");
+            text.className = "min-w-0 flex-1";
+            const title = document.createElement("span");
+            title.className = "block font-semibold text-slate-800";
+            title.textContent = label;
+            const detail = document.createElement("span");
+            detail.className = "mt-0.5 block text-xs text-slate-500";
+            detail.textContent = description;
+            text.append(title, detail);
+            const arrow = document.createElement("i");
+            arrow.className = "fa-solid fa-chevron-right text-xs text-slate-400";
+            arrow.setAttribute("aria-hidden", "true");
+            button.append(icon, text, arrow);
+            button.addEventListener("click", onClick);
+            return button;
+        }
+
+        function ensureSettingsInterface() {
+            const modalContent = document.querySelector("#profileModal > .glass-card");
+            let profileView = document.getElementById("profileDetailsView");
+            if (profileView) {
+                return;
+            }
+
+            const closeButton = modalContent.querySelector('button[aria-label="Close profile"]');
+            profileView = document.createElement("section");
+            profileView.id = "profileDetailsView";
+            profileView.className = "hidden";
+            [...modalContent.children].forEach(child => {
+                if (child !== closeButton) {
+                    profileView.appendChild(child);
+                }
+            });
+
+            const settingsHome = document.createElement("section");
+            settingsHome.id = "settingsHome";
+            settingsHome.className = "space-y-3";
+            const settingsTitle = document.createElement("h2");
+            settingsTitle.className = "mb-5 text-2xl font-bold text-sage-800";
+            settingsTitle.textContent = "Settings";
+            settingsHome.appendChild(settingsTitle);
+            settingsHome.append(
+                createSettingsMenuItem("My Profile", "View or update your profile details", "fa-solid fa-user", () => toggleProfileModal(true)),
+                createSettingsMenuItem("Privacy and Policy", "Learn how account and order data is handled", "fa-solid fa-shield-halved", () => showSettingsView("settingsPrivacy")),
+                createSettingsMenuItem("Account deletion", "Delete your account and sign out", "fa-solid fa-user-slash", event => deleteAccount(event), "border-rose-200 hover:border-rose-300 hover:bg-rose-50")
+            );
+
+            const privacyView = document.createElement("section");
+            privacyView.id = "settingsPrivacy";
+            privacyView.className = "hidden space-y-4";
+            const backButton = document.createElement("button");
+            backButton.type = "button";
+            backButton.className = "mb-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800";
+            backButton.textContent = "← Settings";
+            backButton.addEventListener("click", () => showSettingsView("settingsHome"));
+            const privacyTitle = document.createElement("h2");
+            privacyTitle.className = "text-2xl font-bold text-sage-800";
+            privacyTitle.textContent = "Privacy and Policy";
+            const privacyIntro = document.createElement("p");
+            privacyIntro.className = "text-sm leading-6 text-slate-600";
+            privacyIntro.textContent = "AtudTA uses account and marketplace information to provide its wet market ordering and delivery features.";
+            const privacyList = document.createElement("ul");
+            privacyList.className = "list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600";
+            [
+                "Account details such as your name, email, contact number, address, and role are used to identify your account and support orders and deliveries.",
+                "Vendor stall information, product listings, orders, payments, deliveries, and reviews are stored in the platform database to operate marketplace features.",
+                "Your profile details can be reviewed and updated from Settings. Do not share your password with others.",
+                "If you delete your account, it is marked as deleted in the database, your active sessions are revoked, and you can no longer sign in. Existing marketplace records may remain for operational history."
+            ].forEach(text => {
+                const item = document.createElement("li");
+                item.textContent = text;
+                privacyList.appendChild(item);
+            });
+            privacyView.append(backButton, privacyTitle, privacyIntro, privacyList);
+
+            const profileBackButton = document.createElement("button");
+            profileBackButton.type = "button";
+            profileBackButton.className = "mb-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800";
+            profileBackButton.textContent = "← Settings";
+            profileBackButton.addEventListener("click", () => showSettingsView("settingsHome"));
+            profileView.insertBefore(profileBackButton, profileView.firstChild);
+
+            modalContent.append(settingsHome, privacyView, profileView);
+        }
+
+        function showSettingsView(viewId) {
+            ensureSettingsInterface();
+            ["settingsHome", "settingsPrivacy", "profileDetailsView"].forEach(id => {
+                document.getElementById(id).classList.toggle("hidden", id !== viewId);
+            });
+        }
+
+        function toggleSettingsModal(open) {
+            const modal = document.getElementById("profileModal");
+            if (!modal) {
+                return;
+            }
+            if (open) {
+                if (!currentUser) {
+                    return;
+                }
+                ensureSettingsInterface();
+                showSettingsView("settingsHome");
+            }
+            modal.classList.toggle("hidden", !open);
+        }
+
+        function createProfileEditField(form, id, labelText, value, options = {}) {
+            const wrapper = document.createElement("div");
+            const label = document.createElement("label");
+            label.htmlFor = id;
+            label.className = "mb-1 block text-xs font-semibold uppercase text-slate-600";
+            label.textContent = labelText;
+
+            const input = document.createElement("input");
+            input.id = id;
+            input.name = id;
+            input.type = options.type || "text";
+            input.value = value || "";
+            input.required = true;
+            input.autocomplete = options.autocomplete || "off";
+            input.className = "w-full rounded-xl border border-slate-300 px-4 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-sage-500";
+            if (options.pattern) {
+                input.pattern = options.pattern;
+            }
+            if (options.inputmode) {
+                input.inputMode = options.inputmode;
+            }
+            if (options.title) {
+                input.title = options.title;
+            }
+
+            wrapper.append(label, input);
+            form.appendChild(wrapper);
+        }
+
+        function ensureProfileEditor() {
+            const modalContent = document.getElementById("profileDetailsView") ||
+                document.querySelector("#profileModal > .glass-card");
+            let editor = document.getElementById("profileEditForm");
+            if (editor) {
+                return editor;
+            }
+
+            const container = document.createElement("div");
+            container.id = "profileEditContainer";
+            container.className = "mt-5";
+            const editButton = document.createElement("button");
+            editButton.type = "button";
+            editButton.className = "rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700";
+            editButton.textContent = "Edit Profile";
+
+            editor = document.createElement("form");
+            editor.id = "profileEditForm";
+            editor.className = "hidden space-y-4";
+            editor.addEventListener("submit", saveUserProfile);
+
+            const heading = document.createElement("h3");
+            heading.className = "font-bold text-slate-800";
+            heading.textContent = "Update Profile";
+            editor.appendChild(heading);
+            createProfileEditField(editor, "profileEditName", "Full Name", "", { autocomplete: "name" });
+            createProfileEditField(editor, "profileEditContact", "Contact Number", "", {
+                autocomplete: "tel",
+                inputmode: "numeric",
+                pattern: "09[0-9]{9}",
+                title: "Enter an 11-digit number starting with 09."
+            });
+            createProfileEditField(editor, "profileEditAddress", "Complete Address", "", {
+                autocomplete: "street-address"
+            });
+
+            const vendorFields = [
+                ["profileEditBusinessRole", "Role in the Business"],
+                ["profileEditBadgeNumber", "Badge Number"],
+                ["profileEditStallNumber", "Stall Number"],
+                ["profileEditStallName", "Stall Name"]
+            ];
+            vendorFields.forEach(([id, label]) => {
+                createProfileEditField(editor, id, label, "");
+            });
+            const badgeNumberInput = editor.querySelector("#profileEditBadgeNumber");
+            badgeNumberInput.pattern = "\\d{3}-\\d{3}-\\d{3}";
+            badgeNumberInput.title = "Use the 111-222-333 format.";
+
+            createProfileEditField(editor, "profileEditLicenseNumber", "Driver's License Number", "");
+            const licenseNumberInput = editor.querySelector("#profileEditLicenseNumber");
+            licenseNumberInput.pattern = "[A-Za-z0-9]{12}";
+            licenseNumberInput.title = "Enter 12 letters and/or numbers.";
+
+            const actions = document.createElement("div");
+            actions.className = "flex justify-end gap-2";
+            const cancelButton = document.createElement("button");
+            cancelButton.type = "button";
+            cancelButton.className = "rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200";
+            cancelButton.textContent = "Cancel";
+            cancelButton.addEventListener("click", closeProfileEditor);
+            const saveButton = document.createElement("button");
+            saveButton.type = "submit";
+            saveButton.className = "rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700";
+            saveButton.textContent = "Save Profile";
+            actions.append(cancelButton, saveButton);
+            editor.appendChild(actions);
+
+            editButton.addEventListener("click", () => openProfileEditor(editor, editButton));
+            container.append(editButton, editor);
+            modalContent.appendChild(container);
+            document.getElementById("profileAddressEditButton")?.remove();
+            document.getElementById("profileAddressEditor")?.remove();
+            return editor;
+        }
+
+        async function deleteAccount(event) {
+            if (!currentUser) {
+                return;
+            }
+            if (!window.confirm(
+                `Are you sure you want to delete your ${currentUser.role.toLowerCase()} account? ` +
+                "You will no longer be able to sign in. The account record will be retained in the database as deleted."
+            )) {
+                return;
+            }
+
+            const button = event.currentTarget;
+            button.disabled = true;
+            try {
+                await apiRequest("/api/auth/profile", { method: "DELETE" });
+                users = users.filter(user => user.id !== currentUser.id);
+                try {
+                    localStorage.setItem("atudtaUsers", JSON.stringify(users));
+                } catch (error) {
+                    console.error("Deleted account could not be removed from this browser's cached users.", error);
+                }
+                sessionStorage.removeItem("atudtaAuthToken");
+                sessionStorage.removeItem("atudtaSession");
+                showToast("Your account has been deleted.");
+                window.setTimeout(() => window.location.replace("login.html"), 700);
+            } catch (error) {
+                button.disabled = false;
+                console.error("Could not delete account.", error);
+                showToast(error.message || "Could not delete your account.", "error");
+            }
+        }
+
+        function openProfileEditor(editor, editButton) {
+            if (!currentUser) {
+                return;
+            }
+
+            document.getElementById("profileEditName").value = currentUser.name || "";
+            document.getElementById("profileEditContact").value = currentUser.contact || currentUser.contactNumber || "";
+            document.getElementById("profileEditAddress").value = profileAddressValue(currentUser);
+            document.getElementById("profileEditBusinessRole").value = currentUser.businessRole || "";
+            document.getElementById("profileEditBadgeNumber").value = currentUser.badgeNumber || "";
+            document.getElementById("profileEditStallNumber").value = currentUser.stallNumber || "";
+            document.getElementById("profileEditStallName").value = currentUser.stallName || "";
+            document.getElementById("profileEditLicenseNumber").value = currentUser.licenseNumber || "";
+
+            const isVendor = currentUser.role === "Vendor";
+            const isRider = currentUser.role === "Rider";
+            ["profileEditBusinessRole", "profileEditBadgeNumber", "profileEditStallNumber", "profileEditStallName"]
+                .forEach(id => {
+                    const input = document.getElementById(id);
+                    input.parentElement.classList.toggle("hidden", !isVendor);
+                    input.required = isVendor;
+                    input.disabled = !isVendor;
+                });
+            const licenseInput = document.getElementById("profileEditLicenseNumber");
+            licenseInput.parentElement.classList.toggle("hidden", !isRider);
+            licenseInput.required = isRider;
+            licenseInput.disabled = !isRider;
+            editButton.classList.add("hidden");
+            editor.classList.remove("hidden");
+        }
+
+        function closeProfileEditor() {
+            document.getElementById("profileEditForm")?.classList.add("hidden");
+            document.querySelector("#profileEditContainer > button")?.classList.remove("hidden");
+        }
+
+        async function saveUserProfile(event) {
+            event.preventDefault();
+            if (!currentUser) {
+                return;
+            }
+            if (!window.confirm("Are you sure you want to save these profile changes?")) {
+                return;
+            }
+
+            const form = event.currentTarget;
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            const profileUpdates = {
+                name: document.getElementById("profileEditName").value.trim(),
+                contactNumber: document.getElementById("profileEditContact").value.trim(),
+                address: document.getElementById("profileEditAddress").value.trim()
+            };
+            if (currentUser.role === "Vendor") {
+                Object.assign(profileUpdates, {
+                    businessRole: document.getElementById("profileEditBusinessRole").value.trim(),
+                    badgeNumber: document.getElementById("profileEditBadgeNumber").value.trim(),
+                    stallNumber: document.getElementById("profileEditStallNumber").value.trim(),
+                    stallName: document.getElementById("profileEditStallName").value.trim()
+                });
+            } else if (currentUser.role === "Rider") {
+                profileUpdates.licenseNumber = document.getElementById("profileEditLicenseNumber").value.trim();
+            }
+
+            try {
+                const result = await apiRequest("/api/auth/profile", {
+                    method: "PUT",
+                    body: JSON.stringify(profileUpdates)
+                });
+                if (!result.user?.id) {
+                    throw new Error("The server did not confirm the profile update.");
+                }
+
+                currentUser = { ...currentUser, ...result.user };
+                users = users.map(user => user.id === currentUser.id ? currentUser : user);
+                let localCopyFailed = false;
+                try {
+                    saveData();
+                } catch (error) {
+                    console.error("Profile was updated on the server, but browser data could not be saved.", error);
+                    localCopyFailed = true;
+                }
+
+                const headerLabel = document.getElementById("headerUserLabel");
+                headerLabel.textContent = `${currentUser.name} (${currentUser.role}) - ${currentUser.barangay || "Polangui"}`;
+                toggleProfileModal(true);
+                showToast(
+                    localCopyFailed
+                        ? "Your profile was saved, but this browser could not update its local copy."
+                        : "Profile updated.",
+                    localCopyFailed ? "error" : "success"
+                );
+            } catch (error) {
+                console.error("Could not update profile.", error);
+                showToast(error.message || "Could not update your profile.", "error");
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
         function toggleProfileModal(open) {
             const modal = document.getElementById("profileModal");
             if (!modal) {
@@ -375,6 +716,7 @@
                     return;
                 }
 
+                ensureSettingsInterface();
                 document.getElementById("profileName").textContent = currentUser.name || "Not provided";
                 document.getElementById("profileRole").textContent = currentUser.role || "Not provided";
                 document.getElementById("profileBirthdate").textContent = currentUser.birthdate || "Not provided";
@@ -392,18 +734,10 @@
 
                 const roleDetails = document.getElementById("profileRoleDetails");
                 roleDetails.replaceChildren();
-                document.getElementById("profileAddressEditButton").classList.toggle("hidden", currentUser.role !== "Customer");
-                document.getElementById("profileAddressEditor").classList.add("hidden");
-                if (currentUser.role === "Customer") {
-                    if (currentUser.address) {
-                        addProfileDetail("Address", currentUser.address);
-                    } else {
-                        addProfileDetail("House Number", currentUser.houseNumber);
-                        addProfileDetail("Street Name", currentUser.streetName);
-                        addProfileDetail("Purok Name/Number", currentUser.purok);
-                        addProfileDetail("Barangay", currentUser.barangay);
-                    }
-                } else if (currentUser.role === "Vendor") {
+                ensureProfileEditor();
+                closeProfileEditor();
+                addProfileDetail("Address", profileAddressValue(currentUser));
+                if (currentUser.role === "Vendor") {
                     addProfileDetail("Role in the Business", currentUser.businessRole);
                     addProfileDetail("Badge Number", currentUser.badgeNumber);
                     addProfileDetail("Stall Number", currentUser.stallNumber);
@@ -411,58 +745,10 @@
                 } else if (currentUser.role === "Rider") {
                     addProfileDetail("Driver's License Number", currentUser.licenseNumber);
                 }
+                showSettingsView("profileDetailsView");
             }
 
             modal.classList.toggle("hidden", !open);
-        }
-
-        function openProfileAddressEditor() {
-            if (!currentUser || currentUser.role !== "Customer") {
-                showToast("Only customer accounts can edit a delivery address here.", "error");
-                return;
-            }
-
-            document.getElementById("profileAddress").value = currentUser.address ||
-                [currentUser.houseNumber, currentUser.streetName, currentUser.purok, currentUser.barangay, "Polangui", "Albay"]
-                    .filter(Boolean).join(", ");
-            document.getElementById("profileAddressEditButton").classList.add("hidden");
-            document.getElementById("profileAddressEditor").classList.remove("hidden");
-        }
-
-        function closeProfileAddressEditor() {
-            document.getElementById("profileAddressEditor").classList.add("hidden");
-            document.getElementById("profileAddressEditButton").classList.toggle("hidden", currentUser?.role !== "Customer");
-        }
-
-        function saveProfileAddress(event) {
-            event.preventDefault();
-            if (!currentUser || currentUser.role !== "Customer") {
-                showToast("Only customer accounts can edit a delivery address here.", "error");
-                return;
-            }
-
-            const updatedUser = {
-                ...currentUser,
-                address: document.getElementById("profileAddress").value.trim()
-            };
-            const previousUsers = users;
-            const previousUser = currentUser;
-            currentUser = updatedUser;
-            users = users.map(user => user.id === updatedUser.id ? updatedUser : user);
-            try {
-                saveData();
-            } catch (error) {
-                users = previousUsers;
-                currentUser = previousUser;
-                console.error("Could not save customer address.", error);
-                showToast("Could not save your address. Browser storage may be full.", "error");
-                return;
-            }
-
-            const headerLabel = document.getElementById("headerUserLabel");
-            headerLabel.textContent = `${currentUser.name} (${currentUser.role}) - ${currentUser.barangay || "Polangui"}`;
-            toggleProfileModal(true);
-            showToast("Delivery address updated.");
         }
 
         document.getElementById("profilePictureInput")?.addEventListener("change", function() {
@@ -1549,6 +1835,12 @@
                 showToast("You can only change stock for products in your business.", "error");
                 return;
             }
+            const nextAvailability = !product.inStock;
+            if (!window.confirm(
+                `Are you sure you want to mark "${product.name}" as ${nextAvailability ? "available" : "unavailable"}?`
+            )) {
+                return;
+            }
             try {
                 const result = await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, {
                     method: "PUT",
@@ -1559,7 +1851,7 @@
                         stock: getProductStock(product) ?? 0,
                         stockUnit: product.stockUnit || "piece",
                         imageData: product.imageData || "",
-                        inStock: !product.inStock
+                        inStock: nextAvailability
                     })
                 });
                 products = products.map(item => item.id === prodId ? result.product : item);
@@ -1592,6 +1884,11 @@
                 showToast("Enter a non-negative stock amount with up to 2 decimals. Piece stock must be a whole number.", "error");
                 return;
             }
+            if (!window.confirm(
+                `Are you sure you want to set "${product.name}" stock to ${formatQuantity(stock)} ${getStockUnitLabel(product.stockUnit)}?`
+            )) {
+                return;
+            }
 
             try {
                 const result = await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, {
@@ -1621,6 +1918,9 @@
                 showToast("You can only delete products in your business.", "error");
                 return;
             }
+            if (!window.confirm(`Are you sure you want to delete "${product.name}"? This cannot be undone.`)) {
+                return;
+            }
             try {
                 await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, { method: "DELETE" });
                 products = products.filter(item => item.id !== prodId);
@@ -1629,6 +1929,99 @@
             } catch (error) {
                 console.error("Could not delete product.", error);
                 showToast(error.message || "Could not delete product.", "error");
+            }
+        }
+
+        function handleVendorProductAction(select, prodId) {
+            const action = select.value;
+            select.value = "";
+
+            if (action === "stock") {
+                updateProductStock(prodId);
+            } else if (action === "availability") {
+                toggleStock(prodId);
+            } else if (action === "delete") {
+                deleteProduct(prodId);
+            }
+        }
+
+        function updateVendorProductPhoto(prodId) {
+            const product = products.find(item => item.id === prodId);
+            if (!product || !isProductInCurrentVendorBusiness(product)) {
+                showToast("You can only update photos for products in your business.", "error");
+                return;
+            }
+
+            const input = document.getElementById("vendorProductImageInput");
+            input.dataset.productId = prodId;
+            input.value = "";
+            input.click();
+        }
+
+        async function handleVendorProductPhotoUpdate(event) {
+            const input = event.currentTarget;
+            const imageFile = input.files[0];
+            const prodId = input.dataset.productId;
+            input.value = "";
+            delete input.dataset.productId;
+            if (!imageFile) {
+                return;
+            }
+
+            const product = products.find(item => item.id === prodId);
+            if (!product || !isProductInCurrentVendorBusiness(product)) {
+                showToast("You can only update photos for products in your business.", "error");
+                return;
+            }
+
+            const allowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+            if (!allowedImageTypes.includes(imageFile.type)) {
+                showToast("Choose a JPG, PNG, WEBP, or GIF product picture.", "error");
+                return;
+            }
+            if (imageFile.size > 1024 * 1024) {
+                showToast("Product pictures must be 1 MB or smaller.", "error");
+                return;
+            }
+            if (!window.confirm(`Are you sure you want to update the photo for "${product.name}"?`)) {
+                return;
+            }
+
+            try {
+                const imageData = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.addEventListener("load", () => {
+                        if (typeof reader.result === "string") {
+                            resolve(reader.result);
+                        } else {
+                            reject(new Error("Image file did not produce a readable result."));
+                        }
+                    });
+                    reader.addEventListener("error", () => reject(new Error("Could not read the selected image.")));
+                    reader.readAsDataURL(imageFile);
+                });
+                const result = await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, {
+                    method: "PUT",
+                    body: JSON.stringify({
+                        productName: product.name,
+                        price: product.price,
+                        category: product.category,
+                        stock: getProductStock(product) ?? 0,
+                        stockUnit: product.stockUnit || "piece",
+                        imageData,
+                        inStock: product.inStock
+                    })
+                });
+                if (!result.product?.id) {
+                    throw new Error("The server did not confirm the product picture update.");
+                }
+                products = products.map(item => item.id === prodId ? result.product : item);
+                saveData();
+                renderAll();
+                showToast("Product picture updated.");
+            } catch (error) {
+                console.error("Could not update product picture.", error);
+                showToast(error.message || "Could not update the product picture.", "error");
             }
         }
 
@@ -1662,7 +2055,16 @@
                 <tr>
                     <td class="p-2.5 font-semibold text-slate-800">
                         <div class="flex items-center gap-2">
-                            ${p.imageData ? `<img src="${p.imageData}" alt="" class="w-10 h-10 rounded-lg object-cover">` : ""}
+                            <div class="relative h-10 w-10 shrink-0">
+                                ${p.imageData
+                                    ? `<img src="${p.imageData}" alt="Product photo" class="h-10 w-10 rounded-lg object-cover">`
+                                    : `<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><i class="fa-solid fa-image" aria-hidden="true"></i></div>`}
+                                <button type="button" onclick="updateVendorProductPhoto('${p.id}')"
+                                    aria-label="Update product photo" title="Update product photo"
+                                    class="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-sage-600 text-white shadow hover:bg-sage-700">
+                                    <i class="fa-solid fa-pen text-[9px]" aria-hidden="true"></i>
+                                </button>
+                            </div>
                             <span>${p.name}</span>
                         </div>
                     </td>
@@ -1672,10 +2074,14 @@
                             ${stock === null ? 'Stock not set' : `${formatQuantity(stock)} ${getStockUnitLabel(p.stockUnit)} · ${isAvailable ? 'In Stock' : 'Out'}`}
                         </span>
                     </td>
-                    <td class="p-2.5 text-right space-x-1">
-                        <button onclick="updateProductStock('${p.id}')" class="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">Set Stock</button>
-                        <button onclick="toggleStock('${p.id}')" class="text-xs px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">Toggle</button>
-                        <button onclick="deleteProduct('${p.id}')" class="text-xs px-2 py-1 bg-rose-100 text-rose-600 rounded hover:bg-rose-200">Delete</button>
+                    <td class="p-2.5 text-right">
+                        <select aria-label="Actions for product" onchange="handleVendorProductAction(this, '${p.id}')"
+                            class="max-w-40 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sage-500">
+                            <option value="" selected>Actions</option>
+                            <option value="stock">Add / Set Stock</option>
+                            <option value="availability">${isAvailable ? 'Mark Unavailable' : 'Mark Available'}</option>
+                            <option value="delete">Delete Product</option>
+                        </select>
                     </td>
                 </tr>
                 `;

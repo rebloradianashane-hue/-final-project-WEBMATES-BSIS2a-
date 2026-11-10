@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/user'); 
 const protectRoute = require('../middleware/authMiddleware'); // Import para sa Step 10: Route Protection
 const { createAccount, publicAccount } = require('../utils/account');
+const { requireSession, revokeUserSessions } = require('../middleware/sessionAuth');
 
 // ==========================================
 // 1. POST: Register / Create User Routes
@@ -89,7 +90,7 @@ router.post('/', async (req, res) => {
 // ==========================================
 router.get('/', async (req, res) => {
     try {
-        const users = await User.find();
+        const users = await User.find({ deletedAt: null });
         res.status(200).json(users.map(publicAccount));
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -110,11 +111,25 @@ router.get('/profile', protectRoute, (req, res) => {
 // ==========================================
 // 4. PUT: Update user by ID (PUT /api/users/:id)
 // ==========================================
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireSession, async (req, res) => {
+    if (String(req.authUser._id) !== req.params.id) {
+        return res.status(403).json({ error: 'You can only update your own account.' });
+    }
+
+    const editableFields = [
+        'name', 'contactNumber', 'address', 'businessRole',
+        'badgeNumber', 'stallNumber', 'stallName', 'licenseNumber'
+    ];
+    const body = req.body || {};
+    const updates = Object.fromEntries(
+        editableFields
+            .filter(field => Object.hasOwn(body, field))
+            .map(field => [field, body[field]])
+    );
     try {
-        const updatedUser = await User.findByIdAndUpdate(
-            req.params.id, 
-            req.body, 
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: req.params.id, deletedAt: null },
+            updates,
             { new: true, runValidators: true }
         );
         if (!updatedUser) {
@@ -129,15 +144,19 @@ router.put('/:id', async (req, res) => {
 // ==========================================
 // 5. DELETE: Remove user by ID (DELETE /api/users/:id)
 // ==========================================
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireSession, async (req, res) => {
+    if (String(req.authUser._id) !== req.params.id) {
+        return res.status(403).json({ error: 'You can only delete your own account.' });
+    }
+
     try {
-        const deletedUser = await User.findByIdAndDelete(req.params.id);
-        if (!deletedUser) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.status(200).json({ message: 'User deleted from database successfully!' });
+        req.authUser.deletedAt = new Date();
+        await req.authUser.save();
+        revokeUserSessions(req.authUser._id);
+        return res.status(200).json({ message: 'Account deleted successfully.' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Could not soft-delete user account:', error);
+        return res.status(500).json({ error: 'Could not delete the account. Please try again.' });
     }
 });
 

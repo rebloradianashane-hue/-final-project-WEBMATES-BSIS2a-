@@ -41,7 +41,8 @@ const userSchema = new mongoose.Schema({
     badgeNumber: { type: String, trim: true },
     stallNumber: { type: String, trim: true },
     stallName: { type: String, trim: true },
-    licenseNumber: { type: String, trim: true }
+    licenseNumber: { type: String, trim: true },
+    deletedAt: { type: Date, default: null }
 }, { timestamps: true }); // Automatically manages createdAt and updatedAt fields
 
 module.exports = mongoose.model('User', userSchema);

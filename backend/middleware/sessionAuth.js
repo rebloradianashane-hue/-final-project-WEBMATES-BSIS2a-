@@ -13,6 +13,15 @@ function createSession(userId) {
     return token;
 }
 
+function revokeUserSessions(userId) {
+    const targetUserId = String(userId);
+    for (const [token, session] of sessions) {
+        if (session.userId === targetUserId) {
+            sessions.delete(token);
+        }
+    }
+}
+
 async function requireSession(req, res, next) {
     const authorization = req.get('authorization') || '';
     const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
@@ -25,9 +34,9 @@ async function requireSession(req, res, next) {
 
     try {
         const user = await User.findById(session.userId);
-        if (!user) {
+        if (!user || user.deletedAt) {
             sessions.delete(token);
-            return res.status(401).json({ error: 'Your account could not be verified. Please sign in again.' });
+            return res.status(401).json({ error: 'This account has been deleted and can no longer be accessed.' });
         }
         req.authUser = user;
         return next();
@@ -37,4 +46,4 @@ async function requireSession(req, res, next) {
     }
 }
 
-module.exports = { createSession, requireSession };
+module.exports = { createSession, requireSession, revokeUserSessions };
