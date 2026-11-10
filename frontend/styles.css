@@ -29,3 +29,71 @@
             from { transform: translateY(-100%) translateX(50%); opacity: 0; }
             to { transform: translateY(0) translateX(0); opacity: 1; }
         }
+
+        img,
+        video {
+            max-width: 100%;
+        }
+
+        input,
+        select,
+        textarea {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        @media (max-width: 640px) {
+            header > .max-w-7xl {
+                height: auto;
+                min-height: 4rem;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+                padding-top: 0.75rem;
+                padding-bottom: 0.75rem;
+            }
+
+            #headerUserInfo,
+            #headerAuthButtons {
+                flex-wrap: wrap;
+            }
+
+            #headerUserInfo {
+                margin-left: auto;
+                justify-content: flex-end;
+            }
+
+            #toastContainer {
+                right: 1rem;
+                width: calc(100% - 2rem);
+            }
+
+            #profileModal > .glass-card,
+            #productDetailsModal > div,
+            #cartModal > div,
+            #productModal > div {
+                max-height: calc(100vh - 2rem);
+                overflow-y: auto;
+            }
+        }
+
+        @media (max-width: 480px) {
+            main.max-w-7xl {
+                padding-right: 1rem;
+                padding-left: 1rem;
+            }
+
+            #vendorPage > .grid.grid-cols-2 {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            #profileModal > .glass-card,
+            #productDetailsModal > div,
+            #cartModal > div,
+            #productModal > div {
+                padding: 1rem;
+            }
+
+            #productModal .grid.grid-cols-2 {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
