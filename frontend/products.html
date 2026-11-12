@@ -81,13 +81,13 @@
         <!-- ========================================== -->
         <section id="customerPage">
             <!-- Top Banner -->
-            <div class="bg-[#059669] text-white p-6 rounded-2xl shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div id="customerWelcomeBanner" class="customer-welcome-banner bg-[#059669] text-white p-6 rounded-2xl shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <span class="bg-spink-400 text-white text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">Polangui Public Market</span>
                     <h2 class="text-2xl font-black mt-1">Fresh Produce Delivered to Your Doorstep</h2>
                     <p class="text-white text-sm">Welcome back, <span class="userName font-bold text-white">Customer</span>!</p>
                 </div>
-                <button onclick="toggleCartModal(true)" class="bg-spink-400 hover:bg-spink-600 text-white font-bold px-5 py-3 rounded-xl shadow-md transition flex items-center gap-3">
+                <button id="customerBannerCartButton" onclick="toggleCartModal(true)" class="bg-spink-400 hover:bg-spink-600 text-white font-bold px-5 py-3 rounded-xl shadow-md transition flex items-center gap-3">
                     <i class="fa-solid fa-cart-shopping text-lg"></i>
                     <span>View Cart</span>
                     <span id="cartBadgeCount" class="bg-white text-spink-600 text-xs px-2 py-0.5 rounded-full font-extrabold">0</span>
@@ -116,7 +116,7 @@
                         <h3 class="font-bold text-sage-800 mb-3 flex items-center gap-2">
                             <i class="fa-solid fa-truck-fast text-blue-600"></i> Incoming Orders
                         </h3>
-                        <div id="customerIncomingOrdersList" class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                        <div id="customerIncomingOrdersList" class="space-y-3 pr-1">
                             <!-- Populated dynamically -->
                         </div>
                     </div>
@@ -124,7 +124,15 @@
                         <h3 class="font-bold text-sage-800 mb-3 flex items-center gap-2">
                             <i class="fa-solid fa-comment-dots text-emerald-600"></i> Delivered: Ready to Review
                         </h3>
-                        <div id="customerReviewableOrdersList" class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                        <div id="customerReviewableOrdersList" class="space-y-3 pr-1">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div id="customerMyReviewsPanel" class="glass-card p-5 rounded-2xl shadow-sm hidden">
+                        <h3 class="font-bold text-sage-800 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-star text-amber-500"></i> My Reviewed Products
+                        </h3>
+                        <div id="customerMyReviewsList" class="space-y-3 pr-1">
                             <!-- Populated dynamically -->
                         </div>
                     </div>
@@ -135,8 +143,8 @@
                     <!-- Search bar -->
                     <div class="relative w-full">
                         <input id="productSearchInput" oninput="renderCustomerProducts()" type="text" placeholder="Search products..." 
-                            class="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sage-500 shadow-sm">
-                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-4 text-slate-400"></i>
+                            class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sage-500 shadow-sm">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400"></i>
                     </div>
 
                     <!-- Products Grid -->
