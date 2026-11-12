@@ -22,6 +22,33 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(226, 232, 240, 0.8);
         }
+        .customer-welcome-banner {
+            box-sizing: border-box;
+            transition: width 0.25s ease, padding 0.25s ease;
+            width: 100%;
+        }
+        .customer-welcome-banner.customer-menu-open {
+            width: calc(100% - max(0px, min(28rem, 100vw) - max(0px, (100vw - 80rem) / 2) - 2rem));
+            align-items: flex-start;
+        }
+        #customerSidebar.customer-sidebar-open {
+            position: fixed;
+            z-index: 45;
+            top: 4rem;
+            right: 0;
+            width: min(100vw, 28rem);
+            height: calc(100vh - 4rem);
+            height: calc(100dvh - 4rem);
+            max-height: none;
+            padding: 1rem;
+            overflow-x: hidden;
+            overflow-y: scroll;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+            background-color: #F8FAFC;
+            box-sizing: border-box;
+        }
         .toast-slide {
             animation: slideIn 0.3s ease-out forwards;
         }
@@ -42,7 +69,26 @@
             max-width: 100%;
         }
 
+        @media (min-width: 641px) and (max-width: 1023px) {
+            .customer-welcome-banner.customer-menu-open {
+                width: calc(100% - max(0px, min(28rem, 100vw) - 1.5rem));
+            }
+        }
+
         @media (max-width: 640px) {
+            .customer-welcome-banner.customer-menu-open {
+                width: calc(100% - max(0px, min(62vw, 28rem) - 1rem));
+                padding: 0.75rem;
+                align-items: flex-start;
+            }
+
+            #customerSidebar.customer-sidebar-open {
+                top: 5rem;
+                height: calc(100vh - 5rem);
+                height: calc(100dvh - 5rem);
+                width: min(62vw, 28rem);
+            }
+
             header > .max-w-7xl {
                 height: auto;
                 min-height: 4rem;

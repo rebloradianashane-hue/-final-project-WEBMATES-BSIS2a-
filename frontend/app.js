@@ -3,7 +3,10 @@
         // ==========================================
         
         const localFrontendHosts = ["localhost", "127.0.0.1"];
-        const API_BASE_URL = "https://final-project-webmates-bsis2a-l8zw.onrender.com"
+        const API_BASE_URL = localFrontendHosts.includes(window.location.hostname) &&
+            window.location.port !== "" && window.location.port !== "5000"
+            ? `http://${window.location.hostname}:5000`
+            : "";
         const initialProducts = [];
         const removedProductIds = new Set(["P1", "P2", "P3", "P4"]);
 
@@ -939,11 +942,13 @@
         function toggleCustomerSidebar() {
             const button = document.getElementById("customerSidebarToggle");
             const isOpening = button.getAttribute("aria-expanded") !== "true";
-            ["customerCategoriesPanel", "customerIncomingOrdersPanel", "customerReviewableOrdersPanel"]
+            ["customerCategoriesPanel", "customerIncomingOrdersPanel", "customerReviewableOrdersPanel", "customerMyReviewsPanel"]
                 .forEach(panelId => document.getElementById(panelId).classList.toggle("hidden", !isOpening));
             const layout = document.getElementById("customerCatalogLayout");
             const sidebar = document.getElementById("customerSidebar");
             const content = document.getElementById("customerCatalogContent");
+            sidebar.classList.toggle("customer-sidebar-open", isOpening);
+            document.getElementById("customerWelcomeBanner").classList.toggle("customer-menu-open", isOpening);
             layout.classList.toggle("lg:grid-cols-4", isOpening);
             sidebar.classList.toggle("lg:col-span-1", isOpening);
             content.classList.toggle("lg:col-span-3", isOpening);
@@ -1058,8 +1063,7 @@
 
         function updateCartUI() {
             localStorage.setItem("atudtaCart", JSON.stringify(cart));
-            const badge = document.getElementById("cartBadgeCount");
-            badge.textContent = cart.length;
+            document.getElementById("cartBadgeCount").textContent = cart.length;
 
             const list = document.getElementById("cartItemsList");
             if (cart.length === 0) {
@@ -1670,6 +1674,14 @@
                     author.className = "text-slate-700";
                     author.textContent = review.author || "Customer";
                     heading.append(author);
+                    if (currentUser?.role === "Customer" && String(review.userId) === String(currentUser.id)) {
+                        const deleteButton = document.createElement("button");
+                        deleteButton.type = "button";
+                        deleteButton.className = "text-xs font-semibold text-rose-600 hover:text-rose-800";
+                        deleteButton.textContent = "Delete";
+                        deleteButton.addEventListener("click", () => deleteReview(review));
+                        heading.appendChild(deleteButton);
+                    }
                     const comment = document.createElement("p");
                     comment.className = "mt-2 text-sm text-slate-600 whitespace-pre-wrap";
                     comment.textContent = review.comment || "";
@@ -1714,6 +1726,22 @@
                 : "";
         }
 
+        async function deleteReview(review) {
+            if (!window.confirm("Delete your review? It will be removed from view but kept in the database.")) {
+                return;
+            }
+
+            try {
+                await apiRequest(`/api/reviews/${encodeURIComponent(review.id)}`, { method: "DELETE" });
+                reviews = reviews.filter(item => item.id !== review.id);
+                renderReviews();
+                showToast("Review deleted. Its record remains in the database.");
+            } catch (error) {
+                console.error("Could not delete review.", error);
+                showToast(error.message || "Could not delete your review.", "error");
+            }
+        }
+
         function renderReviewOptions() {
             const orderSelect = document.getElementById("reviewOrder");
             const selectedOrderId = orderSelect.value;
@@ -1732,9 +1760,52 @@
 
         function renderReviews() {
             renderCustomerOrderLists();
+            renderMyReviewsPanel();
             if (selectedProductId && document.getElementById("detailProductReviews")) {
                 renderProductReviews(document.getElementById("reviewOrder")?.value || "");
             }
+        }
+
+        function renderMyReviewsPanel() {
+            const reviewList = document.getElementById("customerMyReviewsList");
+            if (!reviewList || !currentUser) {
+                return;
+            }
+
+            reviewList.replaceChildren();
+            const myReviews = reviews.filter(review => String(review.userId) === String(currentUser.id));
+            if (myReviews.length === 0) {
+                const emptyMessage = document.createElement("p");
+                emptyMessage.className = "text-sm text-slate-500";
+                emptyMessage.textContent = "You haven't reviewed any products yet.";
+                reviewList.appendChild(emptyMessage);
+                return;
+            }
+
+            myReviews.forEach(review => {
+                const card = document.createElement("article");
+                card.className = "rounded-xl border border-slate-200 bg-white p-3";
+                const heading = document.createElement("div");
+                heading.className = "flex items-start justify-between gap-3";
+                const productName = document.createElement("strong");
+                productName.className = "text-sm text-slate-800";
+                productName.textContent = review.target || "Product";
+                const deleteButton = document.createElement("button");
+                deleteButton.type = "button";
+                deleteButton.className = "shrink-0 text-xs font-semibold text-rose-600 hover:text-rose-800";
+                deleteButton.textContent = "Delete review";
+                deleteButton.addEventListener("click", () => deleteReview(review));
+                heading.append(productName, deleteButton);
+
+                const comment = document.createElement("p");
+                comment.className = "mt-2 text-sm text-slate-600 whitespace-pre-wrap";
+                comment.textContent = review.comment || "";
+                const date = document.createElement("p");
+                date.className = "mt-1 text-xs text-slate-400";
+                date.textContent = review.date || "";
+                card.append(heading, comment, date);
+                reviewList.appendChild(card);
+            });
         }
 
         // ==========================================
@@ -1822,7 +1893,7 @@
             }
             toggleProductModal(false);
             e.target.reset();
-            showToast("Product saved to MongoDB!");
+            showToast("Produce added");
             renderAll();
         }
 
@@ -1915,7 +1986,7 @@
                 showToast("You can only delete products in your business.", "error");
                 return;
             }
-            if (!window.confirm(`Are you sure you want to delete "${product.name}"? This cannot be undone.`)) {
+            if (!window.confirm(`Are you sure you want to archive "${product.name}"? It will be removed from the product listings but kept in the database.`)) {
                 return;
             }
             try {
@@ -1923,6 +1994,7 @@
                 products = products.filter(item => item.id !== prodId);
                 saveData();
                 renderAll();
+                showToast("Produce deleted");
             } catch (error) {
                 console.error("Could not delete product.", error);
                 showToast(error.message || "Could not delete product.", "error");
