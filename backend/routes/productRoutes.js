@@ -106,7 +106,7 @@ async function addProduct(req, res) {
 
 router.get('/', async (req, res) => {
     try {
-        const products = await Product.find()
+        const products = await Product.find({ deletedAt: null })
             .populate('vendorID', 'name stallName stallNumber contactNumber')
             .sort({ createdAt: -1 })
             .lean();
@@ -134,7 +134,7 @@ router.put('/:id', requireSession, async (req, res) => {
 
     try {
         const product = await Product.findOneAndUpdate(
-            { _id: req.params.id, vendorID: req.authUser._id },
+            { _id: req.params.id, vendorID: req.authUser._id, deletedAt: null },
             {
                 productName: req.body.productName.trim(),
                 price: req.body.price,
@@ -165,17 +165,18 @@ router.delete('/:id', requireSession, async (req, res) => {
     }
 
     try {
-        const product = await Product.findOneAndDelete({
+        const product = await Product.findOneAndUpdate({
             _id: req.params.id,
-            vendorID: req.authUser._id
-        });
+            vendorID: req.authUser._id,
+            deletedAt: null
+        }, { $set: { deletedAt: new Date() } });
         if (!product) {
             return res.status(404).json({ error: 'Product not found for this vendor.' });
         }
-        return res.status(200).json({ message: 'Product deleted successfully.' });
+        return res.status(200).json({ message: 'Product archived successfully.' });
     } catch (error) {
-        console.error('Could not delete product:', error);
-        return res.status(500).json({ error: 'Could not delete the product from the database.' });
+        console.error('Could not archive product:', error);
+        return res.status(500).json({ error: 'Could not archive the product in the database.' });
     }
 });
 
@@ -205,7 +206,7 @@ router.post('/reserve-stock', requireSession, async (req, res) => {
         for (const [productId, { quantity, requiresKilograms }] of quantities) {
             const stockFilter = requiresKilograms ? { stockUnit: 'kg' } : {};
             const product = await Product.findOneAndUpdate(
-                { _id: productId, stock: { $gte: quantity }, inStock: true, ...stockFilter },
+                { _id: productId, deletedAt: null, stock: { $gte: quantity }, inStock: true, ...stockFilter },
                 { $inc: { stock: -quantity } },
                 { new: true, runValidators: true }
             );
@@ -221,7 +222,7 @@ router.post('/reserve-stock', requireSession, async (req, res) => {
             reserved.push({ productId, quantity });
         }
 
-        const products = await Product.find({ _id: { $in: [...quantities.keys()] } })
+        const products = await Product.find({ _id: { $in: [...quantities.keys()] }, deletedAt: null })
             .populate('vendorID', 'name stallName stallNumber contactNumber')
             .lean();
         return res.status(200).json({ products: products.map(toClientProduct) });

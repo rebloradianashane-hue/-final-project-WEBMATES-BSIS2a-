@@ -73,6 +73,7 @@ const deliveryRoutes = require('./routes/deliveryRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const authRoutes = require('./routes/authRoutes');
+const Review = require('./models/review');
 
 app.use('/api/register', registerRoutes);
 app.use('/api/auth', authRoutes);
@@ -97,14 +98,32 @@ app.get('/', (req, res) => {
 // ==========================================
 const PORT = process.env.PORT || 5000;
 
+async function ensureReviewArchiveIndex() {
+  const indexName = 'customerID_1_orderID_1_productID_1';
+  const collectionExists = await Review.db.db
+    .listCollections({ name: Review.collection.collectionName })
+    .hasNext();
+  if (!collectionExists) {
+    await Review.createCollection();
+  }
+  const indexes = await Review.collection.indexes();
+  const existingIndex = indexes.find(index => index.name === indexName);
+  if (existingIndex &&
+      !Object.hasOwn(existingIndex.partialFilterExpression || {}, 'deletedAt')) {
+    await Review.collection.dropIndex(indexName);
+  }
+  await Review.createIndexes();
+}
+
 mongoose.connect(mongoUri)
-  .then(() => {
+  .then(async () => {
+    await ensureReviewArchiveIndex();
     console.log('Connected to MongoDB successfully!');
     app.listen(PORT, () => {
       console.log(`Server running smoothly on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('MongoDB connection error:', err);
+    console.error('MongoDB initialization error:', err);
     process.exit(1);
   });
