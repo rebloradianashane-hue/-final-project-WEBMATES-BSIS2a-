@@ -30,14 +30,19 @@ const reviewSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true
+    },
+    deletedAt: {
+        type: Date,
+        default: null
     }
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 reviewSchema.index(
     { customerID: 1, orderID: 1, productID: 1 },
     {
         unique: true,
         partialFilterExpression: {
+            deletedAt: null,
             orderID: { $type: 'objectId' },
             productID: { $type: 'objectId' }
         }

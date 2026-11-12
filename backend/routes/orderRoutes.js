@@ -120,7 +120,7 @@ router.post('/place', requireSession, async (req, res) => {
         let itemsSubtotal = 0;
         for (const [productId, quantity] of requestedItems) {
             const product = await Product.findOneAndUpdate(
-                { _id: productId, stock: { $gte: quantity }, inStock: true },
+                { _id: productId, deletedAt: null, stock: { $gte: quantity }, inStock: true },
                 { $inc: { stock: -quantity } },
                 { new: false, runValidators: true }
             ).populate('vendorID', 'stallName stallNumber');

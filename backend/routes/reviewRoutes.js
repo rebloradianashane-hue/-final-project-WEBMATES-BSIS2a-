@@ -67,7 +67,7 @@ router.get('/', requireSession, async (req, res) => {
     }
 
     try {
-        const reviews = await Review.find()
+        const reviews = await Review.find({ deletedAt: null })
             .populate('customerID', 'name')
             .populate('orderID', 'orderNumber')
             .sort({ createdAt: -1 })
@@ -90,7 +90,7 @@ router.put('/:id', requireSession, async (req, res) => {
 
     try {
         const updatedReview = await Review.findOneAndUpdate(
-            { _id: req.params.id, customerID: req.authUser._id },
+            { _id: req.params.id, customerID: req.authUser._id, deletedAt: null },
             { $set: { comments: req.body.comments.trim() } },
             { new: true, runValidators: true }
         ).populate('customerID', 'name').populate('orderID', 'orderNumber');
@@ -113,17 +113,18 @@ router.delete('/:id', requireSession, async (req, res) => {
     }
 
     try {
-        const deletedReview = await Review.findOneAndDelete({
+        const archivedReview = await Review.findOneAndUpdate({
             _id: req.params.id,
-            customerID: req.authUser._id
-        });
-        if (!deletedReview) {
+            customerID: req.authUser._id,
+            deletedAt: null
+        }, { $set: { deletedAt: new Date() } });
+        if (!archivedReview) {
             return res.status(404).json({ error: 'Review not found.' });
         }
-        return res.status(200).json({ message: 'Review deleted successfully.' });
+        return res.status(200).json({ message: 'Review archived successfully.' });
     } catch (error) {
-        console.error('Could not delete product review:', error);
-        return res.status(500).json({ error: 'Could not delete your review.' });
+        console.error('Could not archive product review:', error);
+        return res.status(500).json({ error: 'Could not archive your review.' });
     }
 });
 
