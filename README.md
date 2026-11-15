@@ -1,10 +1,10 @@
-# AtudTA (WEBMATES) 🛒🛵
+# AtudTA (WEBMATES)
 
 AtudTA is a local wet market web application and delivery platform developed by **WEBMATES** for Polangui, Albay. It bridges local market vendors, customers, and delivery riders through an integrated digital storefront, secure user authentication, order processing, and real-time delivery management.
 
 ---
 
-## 🚀 Key Features
+##  Key Features
 
 - **Role-Based Authentication:** Support for **Customers** (browse products, place orders, review items), **Vendors** (manage stall inventory, pack orders, update product stock/photos), and **Riders** (accept delivery queues, update delivery statuses, view completed deliveries).
 - **Secure Backend API:** Built with **Node.js** and **Express**, featuring security headers via **Helmet**, rate limiting for brute-force protection, and XSS sanitization.
@@ -13,7 +13,7 @@ AtudTA is a local wet market web application and delivery platform developed by 
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **Backend:** Node.js, Express, Mongoose, MongoDB Atlas
 - **Security & Middleware:** Helmet, Express-Rate-Limit, Express-Validator, Express-XSS-Sanitizer, CORS, Dotenv
@@ -21,7 +21,7 @@ AtudTA is a local wet market web application and delivery platform developed by 
 
 ---
 
-## ⚙️ Installation & Setup
+##  Installation & Setup
 
 ### 1. Prerequisites
 Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
