@@ -4,9 +4,9 @@
   "description": "",
   "main": "backend/server.js",
   "scripts": {
-    "start": "cd backend && node_modules\\.bin\\nodemon.cmd server.js",
+    "start": "cd backend && npx nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "cd backend && node_modules\\.bin\\nodemon.cmd server.js"
+    "dev": "cd backend && npx nodemon server.js"
   },
   "keywords": [],
   "author": "",

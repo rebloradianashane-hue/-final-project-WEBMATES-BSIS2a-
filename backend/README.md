@@ -35,6 +35,12 @@ npm run dev
 
 The server starts listening only after it connects to MongoDB. When startup succeeds, open `http://localhost:5000` (or the configured port).
 
+## Deploy on Render
+
+Create a Render **Web Service** from the repository root. Use `npm install` as the build command and `npm start` as the start command. In the service's Environment settings, set `MONGO_URI` to a reachable MongoDB connection string; do not rely on the local `backend/.env` file being available on Render. Render supplies `PORT` automatically.
+
+The service only starts listening after MongoDB connects. If deployment still fails, check the Render service logs for the first build or runtime error.
+
 ## Docker Compose
 
 Docker Compose is not configured in this repository yet; it has no `compose.yaml` or backend `Dockerfile`. Therefore, `docker compose up` will not start the app until those files are added. For now, use the local install and run commands above.
