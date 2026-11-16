@@ -55,3 +55,4 @@ Protected routes require a valid session token.
 ## Delete behavior
 
 Account, product, and review delete actions permanently remove their matching MongoDB documents. Delivery and payment delete routes also remove their matching documents. Records that were soft-deleted before this behavior was added are not automatically purged.
+
