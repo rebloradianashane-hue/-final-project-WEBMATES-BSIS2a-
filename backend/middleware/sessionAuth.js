@@ -1,3 +1,4 @@
+
 const crypto = require('crypto');
 const User = require('../models/user');
 
@@ -47,3 +48,4 @@ async function requireSession(req, res, next) {
 }
 
 module.exports = { createSession, requireSession, revokeUserSessions };
+

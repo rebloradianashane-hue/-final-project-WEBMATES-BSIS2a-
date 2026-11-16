@@ -165,18 +165,17 @@ router.delete('/:id', requireSession, async (req, res) => {
     }
 
     try {
-        const product = await Product.findOneAndUpdate({
+        const product = await Product.findOneAndDelete({
             _id: req.params.id,
-            vendorID: req.authUser._id,
-            deletedAt: null
-        }, { $set: { deletedAt: new Date() } });
+            vendorID: req.authUser._id
+        });
         if (!product) {
             return res.status(404).json({ error: 'Product not found for this vendor.' });
         }
-        return res.status(200).json({ message: 'Product archived successfully.' });
+        return res.status(200).json({ message: 'Product deleted successfully.' });
     } catch (error) {
-        console.error('Could not archive product:', error);
-        return res.status(500).json({ error: 'Could not archive the product in the database.' });
+        console.error('Could not permanently delete product:', error);
+        return res.status(500).json({ error: 'Could not delete the product from the database.' });
     }
 });
 

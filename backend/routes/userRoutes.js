@@ -150,12 +150,14 @@ router.delete('/:id', requireSession, async (req, res) => {
     }
 
     try {
-        req.authUser.deletedAt = new Date();
-        await req.authUser.save();
+        const deletedUser = await User.findByIdAndDelete(req.authUser._id);
+        if (!deletedUser) {
+            return res.status(404).json({ error: 'Account not found.' });
+        }
         revokeUserSessions(req.authUser._id);
         return res.status(200).json({ message: 'Account deleted successfully.' });
     } catch (error) {
-        console.error('Could not soft-delete user account:', error);
+        console.error('Could not permanently delete user account:', error);
         return res.status(500).json({ error: 'Could not delete the account. Please try again.' });
     }
 });
@@ -172,3 +174,4 @@ function normalizeRole(role) {
     const normalized = roles[String(role || '').toLowerCase()] || 'Customer';
     return normalized;
 }
+

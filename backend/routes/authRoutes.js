@@ -94,8 +94,10 @@ router.put('/profile', requireSession, async (req, res) => {
 
 router.delete('/profile', requireSession, async (req, res) => {
   try {
-    req.authUser.deletedAt = new Date();
-    await req.authUser.save();
+    const deletedUser = await User.findByIdAndDelete(req.authUser._id);
+    if (!deletedUser) {
+      return res.status(404).json({ error: 'Account not found.' });
+    }
     revokeUserSessions(req.authUser._id);
     return res.status(200).json({ message: 'Account deleted successfully.' });
   } catch (error) {
