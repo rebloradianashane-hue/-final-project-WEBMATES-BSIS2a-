@@ -24,20 +24,20 @@ The project has one `package.json` at the repository root. From that directory, 
 
 ```powershell
 npm install
-npm start
+npm run dev
 ```
 
-For development with automatic restarts:
+To run without nodemon:
 
 ```powershell
-npm run dev
+npm start
 ```
 
 The server starts listening only after it connects to MongoDB. When startup succeeds, open `http://localhost:5000` (or the configured port).
 
 ## Deploy on Render
 
-Create a Render **Web Service** from the repository root. Set the build command to `npm install` and the start command to `node backend/server.js` (nodemon remains for local development). In the service's Environment settings, set `MONGO_URI` to a reachable MongoDB connection string; do not rely on the local `backend/.env` file being available on Render. Render supplies `PORT` automatically.
+Create a Render **Web Service** from the repository root. Set the build command to `npm install` and the start command to `npm start`. The start script runs `node backend/server.js` without nodemon. In the service's Environment settings, set `MONGO_URI` to a reachable MongoDB connection string; do not rely on the local `backend/.env` file being available on Render. Render supplies `PORT` automatically.
 
 The service only starts listening after MongoDB connects. Make sure the MongoDB provider allows connections from Render. If deployment still fails, check the Render service logs for the first build or runtime error.
 
