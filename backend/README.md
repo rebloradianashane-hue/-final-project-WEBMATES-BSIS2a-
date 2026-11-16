@@ -37,9 +37,9 @@ The server starts listening only after it connects to MongoDB. When startup succ
 
 ## Deploy on Render
 
-Create a Render **Web Service** from the repository root. Use `npm install` as the build command and `npm start` as the start command. In the service's Environment settings, set `MONGO_URI` to a reachable MongoDB connection string; do not rely on the local `backend/.env` file being available on Render. Render supplies `PORT` automatically.
+Create a Render **Web Service** from the repository root. Set the build command to `npm install` and the start command to `node backend/server.js` (nodemon remains for local development). In the service's Environment settings, set `MONGO_URI` to a reachable MongoDB connection string; do not rely on the local `backend/.env` file being available on Render. Render supplies `PORT` automatically.
 
-The service only starts listening after MongoDB connects. If deployment still fails, check the Render service logs for the first build or runtime error.
+The service only starts listening after MongoDB connects. Make sure the MongoDB provider allows connections from Render. If deployment still fails, check the Render service logs for the first build or runtime error.
 
 ## Docker Compose
 
