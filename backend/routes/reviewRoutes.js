@@ -1,3 +1,4 @@
+
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
@@ -113,19 +114,19 @@ router.delete('/:id', requireSession, async (req, res) => {
     }
 
     try {
-        const archivedReview = await Review.findOneAndUpdate({
+        const deletedReview = await Review.findOneAndDelete({
             _id: req.params.id,
-            customerID: req.authUser._id,
-            deletedAt: null
-        }, { $set: { deletedAt: new Date() } });
-        if (!archivedReview) {
+            customerID: req.authUser._id
+        });
+        if (!deletedReview) {
             return res.status(404).json({ error: 'Review not found.' });
         }
-        return res.status(200).json({ message: 'Review archived successfully.' });
+        return res.status(200).json({ message: 'Review deleted successfully.' });
     } catch (error) {
-        console.error('Could not archive product review:', error);
-        return res.status(500).json({ error: 'Could not archive your review.' });
+        console.error('Could not permanently delete product review:', error);
+        return res.status(500).json({ error: 'Could not delete your review from the database.' });
     }
 });
 
 module.exports = router;
+

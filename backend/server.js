@@ -1,12 +1,12 @@
-require('dotenv').config();
+
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const mongoose = require('mongoose'); 
 const cors = require('cors');           
 const helmet = require('helmet');       
 const { xss } = require('express-xss-sanitizer');
 const rateLimit = require('express-rate-limit'); 
-const path = require('path');
-
 const app = express();
 
 // ==========================================
@@ -73,7 +73,6 @@ const deliveryRoutes = require('./routes/deliveryRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const authRoutes = require('./routes/authRoutes');
-const Review = require('./models/review');
 
 app.use('/api/register', registerRoutes);
 app.use('/api/auth', authRoutes);
@@ -84,7 +83,7 @@ app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 
-app.use(express.static(path.resolve(__dirname, '..', 'phase3')));
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // ==========================================
 // STEP 3.5: ROOT ROUTE HANDLER (Fixes Cannot GET /)
@@ -98,32 +97,15 @@ app.get('/', (req, res) => {
 // ==========================================
 const PORT = process.env.PORT || 5000;
 
-async function ensureReviewArchiveIndex() {
-  const indexName = 'customerID_1_orderID_1_productID_1';
-  const collectionExists = await Review.db.db
-    .listCollections({ name: Review.collection.collectionName })
-    .hasNext();
-  if (!collectionExists) {
-    await Review.createCollection();
-  }
-  const indexes = await Review.collection.indexes();
-  const existingIndex = indexes.find(index => index.name === indexName);
-  if (existingIndex &&
-      !Object.hasOwn(existingIndex.partialFilterExpression || {}, 'deletedAt')) {
-    await Review.collection.dropIndex(indexName);
-  }
-  await Review.createIndexes();
-}
-
 mongoose.connect(mongoUri)
-  .then(async () => {
-    await ensureReviewArchiveIndex();
+  .then(() => {
     console.log('Connected to MongoDB successfully!');
     app.listen(PORT, () => {
       console.log(`Server running smoothly on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('MongoDB initialization error:', err);
+    console.error('MongoDB connection error:', err);
     process.exit(1);
   });
+

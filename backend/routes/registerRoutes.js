@@ -1,3 +1,4 @@
+
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { createAccount, publicAccount } = require('../utils/account');
@@ -79,3 +80,4 @@ router.post(
 );
 
 module.exports = router;
+

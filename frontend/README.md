@@ -2,18 +2,17 @@
 
 ## Run locally
 
-The Express backend serves this frontend and the API from the same local address. First make sure `backend/.env` contains a valid `MONGO_URI` for your MongoDB database. Keep that file private. If you prefer to open the frontend through Live Server on `localhost` or `127.0.0.1`, the app automatically sends API requests to `http://localhost:5000`.
+The Express backend serves this frontend and the API from the same local address. First make sure the project-root `.env` contains a valid `MONGO_URI` for your MongoDB database. Keep that file private.
 
-In VS Code, open a terminal and run:
+In VS Code, open a terminal in the project root (the folder containing `server.js` and `package.json`) and run:
 
 ```powershell
-cd "D:\final project\backend"
 npm start
 ```
 
-When the terminal reports that MongoDB connected and the server is running, open `http://localhost:5000` in Chrome. The root page redirects to the login page. Signup and login are sent to the backend; new accounts are saved in MongoDB, and passwords are stored as scrypt hashes rather than plain text.
+When the terminal reports that MongoDB connected and the server is running, open `http://localhost:5000` in Chrome. The root page redirects to the login page. Signup and login are sent to the backend; new accounts are saved in MongoDB, and passwords are stored as scrypt hashes rather than plain text. The VS Code launch configuration also expects the server to be running on port 5000.
 
-Do not open the HTML files with `file://`; use `http://localhost:5000` or Live Server on localhost so the frontend can reach the backend API.
+Do not open the HTML files with `file://`; use `http://localhost:5000` so the frontend can reach the backend API. When the frontend is opened on `localhost` or `127.0.0.1`, API requests are sent to the local backend. Other hosts use the configured Render backend.
 
 ## Deploying on Render
 
