@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - AtudTA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-app-page="admin" class="text-slate-800 antialiased min-h-screen flex flex-col">
+    <header class="bg-[#059669] text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-400 flex items-center justify-center text-white shadow-lg text-xl font-bold">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight">AtudTA <span class="text-xs px-2 py-0.5 rounded-full bg-amber-400 text-white font-semibold">ADMIN</span></h1>
+                    <p class="text-xs text-white">System Administration</p>
+                </div>
+            </div>
+            <div id="headerUserInfo" class="flex items-center gap-3">
+                <span id="headerUserLabel" class="text-sm font-medium text-white hidden sm:inline">Admin</span>
+                <div id="headerAuthButtons" class="flex items-center gap-2"></div>
+            </div>
+        </div>
+    </header>
+
+    <div id="toastContainer" class="fixed top-20 right-5 z-50 flex w-[calc(100%-2.5rem)] max-w-md flex-col gap-2 pointer-events-none sm:w-full"></div>
+
+    <div id="profileModal" class="fixed inset-0 z-50 hidden justify-end bg-slate-900/40" onclick="if (event.target === this) toggleSettingsModal(false)">
+        <div class="glass-card relative h-[calc(100%-1.5rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl my-3 mr-3">
+            <button type="button" aria-label="Close profile" onclick="toggleSettingsModal(false)" class="absolute right-4 top-4 text-slate-500 hover:text-slate-800">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="deleteAdminModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="deleteAdminTitle" onclick="if (event.target === this) document.getElementById('cancelDeleteAdminButton').click()">
+        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-2xl text-rose-700">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h2 id="deleteAdminTitle" class="text-xl font-extrabold text-slate-900">Delete Admin User?</h2>
+            <p id="deleteAdminMessage" class="mt-2 text-sm font-bold leading-6 text-slate-700">
+                This account will be permanently removed. This action cannot be undone.
+            </p>
+            <div class="mt-6 flex justify-center gap-3">
+                <button id="cancelDeleteAdminButton" type="button" class="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-extrabold text-slate-800 hover:bg-slate-50">
+                    Cancel
+                </button>
+                <button id="confirmDeleteAdminButton" type="button" class="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-rose-700">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+        <div class="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-widest text-emerald-700">Administrator</p>
+                <h2 class="text-3xl font-extrabold text-slate-800">Admin Dashboard</h2>
+            </div>
+            <span class="inline-flex w-fit items-center gap-2 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">
+                <i class="fa-solid fa-shield-halved"></i> [ADMIN]
+            </span>
+        </div>
+
+        <section class="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-8" aria-label="Account statistics">
+            <article class="glass-card rounded-2xl p-5 border border-slate-200">
+                <p class="text-xs font-bold uppercase text-slate-500">Active Users</p>
+                <p id="adminActiveUsers" class="mt-2 text-3xl font-extrabold text-emerald-700">-</p>
+            </article>
+            <article class="glass-card rounded-2xl p-5 border border-slate-200">
+                <p class="text-xs font-bold uppercase text-slate-500">Suspended</p>
+                <p id="adminSuspendedUsers" class="mt-2 text-3xl font-extrabold text-rose-700">-</p>
+            </article>
+            <article class="glass-card rounded-2xl p-5 border border-slate-200">
+                <p class="text-xs font-bold uppercase text-slate-500">Customers</p>
+                <p id="adminCustomers" class="mt-2 text-3xl font-extrabold text-sky-700">-</p>
+            </article>
+            <article class="glass-card rounded-2xl p-5 border border-slate-200">
+                <p class="text-xs font-bold uppercase text-slate-500">Vendors</p>
+                <p id="adminVendors" class="mt-2 text-3xl font-extrabold text-violet-700">-</p>
+            </article>
+        </section>
+
+        <section class="grid grid-cols-2 gap-4 md:grid-cols-4 mb-8" aria-label="System statistics">
+            <article class="rounded-2xl bg-slate-800 p-5 text-white"><p class="text-xs text-slate-300">Riders</p><p id="adminRiders" class="mt-2 text-2xl font-bold">-</p></article>
+            <article class="rounded-2xl bg-slate-800 p-5 text-white"><p class="text-xs text-slate-300">Products</p><p id="adminProducts" class="mt-2 text-2xl font-bold">-</p></article>
+            <article class="rounded-2xl bg-slate-800 p-5 text-white"><p class="text-xs text-slate-300">Orders</p><p id="adminOrders" class="mt-2 text-2xl font-bold">-</p></article>
+            <article class="rounded-2xl bg-slate-800 p-5 text-white"><p class="text-xs text-slate-300">Deliveries</p><p id="adminDeliveries" class="mt-2 text-2xl font-bold">-</p></article>
+        </section>
+
+        <section id="createAdminForm" class="glass-card hidden rounded-2xl border border-slate-200 p-5 mb-6" data-settings-only="true">
+            <div class="mb-4">
+                <h3 class="font-extrabold text-slate-800">Add Admin User</h3>
+                <p class="text-xs text-slate-500">Only the ATUDTA Super Admin can create another Admin User.</p>
+            </div>
+            <form class="grid gap-3 md:grid-cols-2" onsubmit="createAdminUser(event)">
+                <input id="adminName" type="text" required placeholder="Admin name" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">
+                <input id="adminEmail" type="email" required placeholder="Admin email" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">
+                <input id="adminPassword" type="password" required minlength="6" placeholder="Strong password" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">
+                <input id="adminContact" type="tel" required pattern="09[0-9]{9}" placeholder="09123456789" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">
+                <input id="adminAddress" type="text" required placeholder="Address" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm md:col-span-2">
+                <button type="submit" class="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-600 md:col-span-2">
+                    <i class="fa-solid fa-user-shield mr-1"></i> Create Admin User
+                </button>
+            </form>
+        </section>
+
+        <section class="glass-card rounded-2xl border border-slate-200 overflow-hidden">
+            <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <div>
+                    <h3 class="font-extrabold text-slate-800">User Management</h3>
+                    <p class="text-xs text-slate-500">Suspend or restore non-admin accounts.</p>
+                </div>
+                <button type="button" onclick="renderAll()" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                    <i class="fa-solid fa-rotate mr-1"></i> Refresh
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left font-sans text-sm">
+                    <thead class="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-600">
+                        <tr>
+                            <th class="px-4 py-3">Name</th>
+                            <th class="px-4 py-3">Email</th>
+                            <th class="px-4 py-3">Role</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminUsersTableBody" class="divide-y divide-slate-100">
+                        <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Loading users...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-[#059669] text-white py-6 text-center text-xs">
+        <p>&copy; 2026 AtudTA Wet Market Platform. Administrator Console.</p>
+    </footer>
+    <script src="app.js" defer></script>
+</body>
+</html>

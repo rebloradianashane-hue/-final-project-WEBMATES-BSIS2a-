@@ -109,6 +109,208 @@
             reviews = loadedReviews;
         }
 
+        async function createAdminUser(event) {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            const adminUser = {
+                name: document.getElementById("adminName").value,
+                email: document.getElementById("adminEmail").value,
+                password: document.getElementById("adminPassword").value,
+                contactNumber: document.getElementById("adminContact").value,
+                address: document.getElementById("adminAddress").value
+            };
+            try {
+                const result = await apiRequest("/api/admin/users", {
+                    method: "POST",
+                    body: JSON.stringify(adminUser)
+                });
+                showToast(result.message, "success");
+                form.reset();
+                await loadAdminDashboard();
+            } catch (error) {
+                showToast(error.message || "Could not create the Admin User.", "error");
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
+        async function loadAdminDashboard() {
+            if (currentUser?.role !== "Admin") {
+                return;
+            }
+            const [dashboard, allUsers] = await Promise.all([
+                apiRequest("/api/admin/dashboard"),
+                apiRequest("/api/admin/users")
+            ]);
+
+            document.getElementById("adminActiveUsers").textContent = dashboard.users.active;
+            document.getElementById("adminSuspendedUsers").textContent = dashboard.users.suspended;
+            document.getElementById("adminCustomers").textContent = dashboard.users.customers;
+            document.getElementById("adminVendors").textContent = dashboard.users.vendors;
+            document.getElementById("adminRiders").textContent = dashboard.users.riders;
+            document.getElementById("adminProducts").textContent = dashboard.products;
+            document.getElementById("adminOrders").textContent = dashboard.orders;
+            document.getElementById("adminDeliveries").textContent = dashboard.deliveries;
+
+            const tableBody = document.getElementById("adminUsersTableBody");
+            tableBody.replaceChildren();
+            allUsers.forEach(user => {
+                const row = document.createElement("tr");
+                const suspended = Boolean(user.deletedAt);
+                const roleLabel = user.role === "Admin"
+                    ? (user.adminLevel === "super_admin" ? "Super Admin" : "Admin User")
+                    : user.role;
+                const actionDisabled = user.role === "Admin" &&
+                    (user.adminLevel === "super_admin" || dashboard.currentAdminLevel !== "super_admin");
+                const createdByLabel = user.role === "Admin" && user.adminLevel === "sub_admin"
+                    ? `<span class="mt-1 block text-xs font-semibold text-slate-500">Created by ATUDTA Super Admin</span>`
+                    : "";
+                row.innerHTML = `
+                    <td class="px-4 py-3 text-sm font-extrabold text-slate-800">${escapeHtml(user.name)}${createdByLabel}</td>
+                    <td class="px-4 py-3 break-all text-sm font-medium text-slate-600">${escapeHtml(user.email)}</td>
+                    <td class="px-4 py-3">
+                        <span class="${user.role === "Admin" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"} px-2.5 py-1 rounded-full text-sm font-extrabold">
+                            ${escapeHtml(roleLabel)}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="${suspended ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"} px-2.5 py-1 rounded-full text-sm font-extrabold">
+                            ${suspended ? "Suspended" : "Active"}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        ${actionDisabled ? '<span class="text-sm font-semibold text-slate-400">Protected</span>' :
+                            `<div class="flex justify-end gap-3">
+                                <button type="button" data-admin-status-id="${escapeHtml(user.id)}" data-suspended="${suspended}"
+                                    class="${suspended ? "text-emerald-700" : "text-rose-700"} text-sm font-bold hover:underline">
+                                    ${suspended ? "Restore" : "Suspend"}
+                                </button>
+                                ${user.role === "Admin" && user.adminLevel === "sub_admin"
+                                    ? `<button type="button" data-admin-delete-id="${escapeHtml(user.id)}" class="text-sm font-bold text-rose-800 hover:underline">Delete</button>`
+                                    : ""}
+                            </div>`}
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            tableBody.querySelectorAll("[data-admin-status-id]").forEach(button => {
+                button.addEventListener("click", () => updateAdminUserStatus(
+                    button.dataset.adminStatusId,
+                    button.dataset.suspended !== "true"
+                ));
+            });
+            tableBody.querySelectorAll("[data-admin-delete-id]").forEach(button => {
+                button.addEventListener("click", () => deleteAdminUser(button.dataset.adminDeleteId));
+            });
+
+            const settingsAdminAccountsList = document.getElementById("settingsAdminAccountsList");
+            if (settingsAdminAccountsList && dashboard.currentAdminLevel === "super_admin") {
+                const adminAccounts = allUsers.filter(user =>
+                    user.role === "Admin" &&
+                    user.adminLevel === "sub_admin"
+                );
+                settingsAdminAccountsList.replaceChildren();
+                if (adminAccounts.length === 0) {
+                    const empty = document.createElement("p");
+                    empty.className = "rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-500";
+                    empty.textContent = "No Admin User accounts created yet.";
+                    settingsAdminAccountsList.appendChild(empty);
+                } else {
+                    adminAccounts.forEach(user => {
+                        const card = document.createElement("article");
+                        card.className = "rounded-xl border border-slate-200 bg-white p-4";
+                        card.innerHTML = `
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="break-words text-sm font-extrabold text-slate-900">${escapeHtml(user.name)}</p>
+                                    <p class="mt-1 break-all text-sm font-bold text-slate-600">${escapeHtml(user.email)}</p>
+                                    <p class="mt-2 text-xs font-extrabold ${user.deletedAt ? "text-rose-700" : "text-emerald-700"}">
+                                        ${user.deletedAt ? "Suspended" : "Active"}
+                                    </p>
+                                </div>
+                                <button type="button" data-settings-admin-delete-id="${escapeHtml(user.id)}"
+                                    class="shrink-0 text-sm font-extrabold text-rose-700 hover:underline">Delete</button>
+                            </div>
+                        `;
+                        settingsAdminAccountsList.appendChild(card);
+                    });
+
+                    settingsAdminAccountsList.querySelectorAll("[data-settings-admin-delete-id]").forEach(button => {
+                        button.addEventListener("click", () => deleteAdminUser(button.dataset.settingsAdminDeleteId));
+                    });
+                }
+            }
+        }
+
+        function escapeHtml(value) {
+            const element = document.createElement("span");
+            element.textContent = String(value ?? "");
+            return element.innerHTML;
+        }
+
+        async function updateAdminUserStatus(userId, suspended) {
+            try {
+                const result = await apiRequest(`/api/admin/users/${encodeURIComponent(userId)}/status`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ suspended })
+                });
+                showToast(result.message, "success");
+                await loadAdminDashboard();
+            } catch (error) {
+                showToast(error.message || "Could not update the user.", "error");
+            }
+        }
+
+        async function deleteAdminUser(userId) {
+            const modal = document.getElementById("deleteAdminModal");
+            const confirmButton = document.getElementById("confirmDeleteAdminButton");
+            const cancelButton = document.getElementById("cancelDeleteAdminButton");
+            if (!modal || !confirmButton || !cancelButton) {
+                return;
+            }
+
+            confirmButton.disabled = false;
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+
+            const closeModal = () => {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+                confirmButton.onclick = null;
+                cancelButton.onclick = null;
+                document.removeEventListener("keydown", handleModalEscape);
+            };
+
+            const handleModalEscape = (event) => {
+                if (event.key === "Escape") {
+                    closeModal();
+                }
+            };
+            document.addEventListener("keydown", handleModalEscape);
+
+            cancelButton.onclick = closeModal;
+            confirmButton.onclick = async () => {
+                confirmButton.disabled = true;
+                await performAdminUserDelete(userId);
+                closeModal();
+            };
+        }
+
+        async function performAdminUserDelete(userId) {
+            try {
+                const result = await apiRequest(`/api/admin/users/${encodeURIComponent(userId)}`, {
+                    method: "DELETE"
+                });
+                showToast(result.message, "success");
+                await loadAdminDashboard();
+            } catch (error) {
+                showToast(error.message || "Could not delete the Admin User.", "error");
+            }
+        }
+
         // Sound Effects via Web Audio API
         function playChime() {
             try {
@@ -133,9 +335,21 @@
         function showToast(message, type = "success") {
             const container = document.getElementById("toastContainer");
             const toast = document.createElement("div");
-            const bgColor = type === "success" ? "bg-emerald-600" : "bg-spink-600";
-            toast.className = `${bgColor} text-white px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center justify-between toast-slide pointer-events-auto`;
-            toast.innerHTML = `<span>${message}</span> <button onclick="this.parentElement.remove()" class="ml-3 font-bold">✕</button>`;
+            const borderColor = type === "success" ? "border-emerald-500" : "border-rose-500";
+            toast.className = `bg-white ${borderColor} border-l-4 text-black px-5 py-4 rounded-xl shadow-2xl flex items-start justify-between gap-3 toast-slide pointer-events-auto`;
+
+            const text = document.createElement("span");
+            text.className = "break-words text-base font-black text-black leading-snug";
+            text.textContent = message;
+
+            const closeButton = document.createElement("button");
+            closeButton.type = "button";
+            closeButton.className = "ml-1 shrink-0 text-lg font-black text-black leading-none";
+            closeButton.setAttribute("aria-label", "Close notification");
+            closeButton.textContent = "✕";
+            closeButton.addEventListener("click", () => toast.remove());
+
+            toast.append(text, closeButton);
             container.appendChild(toast);
             playChime();
             setTimeout(() => { toast.remove(); }, 4000);
@@ -173,7 +387,16 @@
         // ==========================================
         // PAGE & AUTHENTICATION NAVIGATION LOGIC
         // ==========================================
-        const rolePages = { Vendor: "vendor.html", Customer: "products.html", Rider: "rider.html" };
+        const rolePages = { Vendor: "vendor.html", Customer: "products.html", Rider: "rider.html", Admin: "admin.html" };
+        function formatRoleBadge(role) {
+            return role === "Admin" ? "[ADMIN]" : role || "Not provided";
+        }
+
+        function formatUserIdentity(user) {
+            const roleBadge = user?.role === "Admin" ? " [ADMIN]" : "";
+            return `${user.name}${roleBadge} - ${user.barangay || "Polangui"}`;
+        }
+
         const pageRoutes = {
             loginPage: "login.html",
             signupPage: "signup.html",
@@ -401,11 +624,51 @@
             settingsTitle.className = "mb-5 text-2xl font-bold text-sage-800";
             settingsTitle.textContent = "Settings";
             settingsHome.appendChild(settingsTitle);
+            if (currentUser?.role !== "Admin") {
+                settingsHome.append(
+                    createSettingsMenuItem("My Profile", "View or update your profile details", "fa-solid fa-user", () => toggleProfileModal(true))
+                );
+            }
             settingsHome.append(
-                createSettingsMenuItem("My Profile", "View or update your profile details", "fa-solid fa-user", () => toggleProfileModal(true)),
                 createSettingsMenuItem("Privacy and Policy", "Learn how account and order data is handled", "fa-solid fa-shield-halved", () => showSettingsView("settingsPrivacy")),
                 createSettingsMenuItem("Account deletion", "Delete your account and sign out", "fa-solid fa-user-slash", event => deleteAccount(event), "border-rose-200 hover:border-rose-300 hover:bg-rose-50")
             );
+            if (currentUser?.role === "Admin" && currentUser.adminLevel === "super_admin") {
+                settingsHome.append(
+                    createSettingsMenuItem(
+                        "Admin Users",
+                        "Add or delete subordinate Admin accounts",
+                        "fa-solid fa-user-shield",
+                        () => showSettingsView("settingsAdminUsers")
+                    )
+                );
+            }
+
+            const adminUsersView = document.createElement("section");
+            adminUsersView.id = "settingsAdminUsers";
+            adminUsersView.className = "hidden space-y-4";
+            const adminBackButton = document.createElement("button");
+            adminBackButton.type = "button";
+            adminBackButton.className = "mb-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800";
+            adminBackButton.textContent = "← Settings";
+            adminBackButton.addEventListener("click", () => showSettingsView("settingsHome"));
+            adminUsersView.appendChild(adminBackButton);
+
+            const createAdminForm = document.getElementById("createAdminForm");
+            if (createAdminForm) {
+                createAdminForm.classList.remove("hidden", "mb-6");
+                createAdminForm.classList.add("border-0", "shadow-none", "p-0");
+                adminUsersView.appendChild(createAdminForm);
+            }
+
+            const adminAccountsSection = document.createElement("section");
+            adminAccountsSection.className = "mt-6 border-t border-slate-200 pt-5";
+            adminAccountsSection.innerHTML = `
+                <h3 class="text-lg font-extrabold text-slate-800">My Admin Accounts</h3>
+                <p class="mt-1 text-xs font-bold text-slate-500">Accounts created under this Super Admin.</p>
+                <div id="settingsAdminAccountsList" class="mt-3 space-y-3"></div>
+            `;
+            adminUsersView.appendChild(adminAccountsSection);
 
             const privacyView = document.createElement("section");
             privacyView.id = "settingsPrivacy";
@@ -442,12 +705,12 @@
             profileBackButton.addEventListener("click", () => showSettingsView("settingsHome"));
             profileView.insertBefore(profileBackButton, profileView.firstChild);
 
-            modalContent.append(settingsHome, privacyView, profileView);
+            modalContent.append(settingsHome, privacyView, profileView, adminUsersView);
         }
 
         function showSettingsView(viewId) {
             ensureSettingsInterface();
-            ["settingsHome", "settingsPrivacy", "profileDetailsView"].forEach(id => {
+            ["settingsHome", "settingsPrivacy", "profileDetailsView", "settingsAdminUsers"].forEach(id => {
                 document.getElementById(id).classList.toggle("hidden", id !== viewId);
             });
         }
@@ -465,6 +728,7 @@
                 showSettingsView("settingsHome");
             }
             modal.classList.toggle("hidden", !open);
+            modal.classList.toggle("flex", open);
         }
 
         function createProfileEditField(form, id, labelText, value, options = {}) {
@@ -576,32 +840,65 @@
             if (!currentUser) {
                 return;
             }
-            if (!window.confirm(
-                `Are you sure you want to delete your ${currentUser.role.toLowerCase()} account? ` +
-                "You will no longer be able to sign in. The account record will be retained in the database as deleted."
-            )) {
-                return;
+            const existingModal = document.getElementById("deleteAccountModal");
+            if (existingModal) {
+                existingModal.remove();
             }
 
-            const button = event.currentTarget;
-            button.disabled = true;
-            try {
-                await apiRequest("/api/auth/profile", { method: "DELETE" });
-                users = users.filter(user => user.id !== currentUser.id);
-                try {
-                    localStorage.setItem("atudtaUsers", JSON.stringify(users));
-                } catch (error) {
-                    console.error("Deleted account could not be removed from this browser's cached users.", error);
+            const modal = document.createElement("div");
+            modal.id = "deleteAccountModal";
+            modal.className = "fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 px-4";
+            modal.setAttribute("role", "dialog");
+            modal.setAttribute("aria-modal", "true");
+            modal.setAttribute("aria-labelledby", "deleteAccountTitle");
+            modal.innerHTML = `
+                <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl">
+                    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-2xl text-rose-700">
+                        <i class="fa-solid fa-user-slash"></i>
+                    </div>
+                    <h2 id="deleteAccountTitle" class="text-xl font-extrabold text-slate-900">Delete Account?</h2>
+                    <p class="mt-2 text-sm font-bold leading-6 text-slate-700">
+                        Are you sure you want to delete your ${escapeHtml(currentUser.role)} account?
+                        You will no longer be able to sign in.
+                    </p>
+                    <div class="mt-6 flex justify-center gap-3">
+                        <button id="cancelDeleteAccountButton" type="button" class="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-extrabold text-slate-800 hover:bg-slate-50">Cancel</button>
+                        <button id="confirmDeleteAccountButton" type="button" class="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-rose-700">Delete Account</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            const closeModal = () => modal.remove();
+            document.getElementById("cancelDeleteAccountButton").addEventListener("click", closeModal);
+            modal.addEventListener("click", clickEvent => {
+                if (clickEvent.target === modal) {
+                    closeModal();
                 }
-                sessionStorage.removeItem("atudtaAuthToken");
-                sessionStorage.removeItem("atudtaSession");
-                showToast("Your account has been deleted.");
-                window.setTimeout(() => window.location.replace("login.html"), 700);
-            } catch (error) {
-                button.disabled = false;
-                console.error("Could not delete account.", error);
-                showToast(error.message || "Could not delete your account.", "error");
-            }
+            });
+
+            document.getElementById("confirmDeleteAccountButton").addEventListener("click", async confirmEvent => {
+                const button = confirmEvent.currentTarget;
+                button.disabled = true;
+                try {
+                    await apiRequest("/api/auth/profile", { method: "DELETE" });
+                    users = users.filter(user => user.id !== currentUser.id);
+                    try {
+                        localStorage.setItem("atudtaUsers", JSON.stringify(users));
+                    } catch (error) {
+                        console.error("Deleted account could not be removed from this browser's cached users.", error);
+                    }
+                    sessionStorage.removeItem("atudtaAuthToken");
+                    sessionStorage.removeItem("atudtaSession");
+                    closeModal();
+                    showToast("Your account has been deleted.");
+                    window.setTimeout(() => window.location.replace("login.html"), 700);
+                } catch (error) {
+                    button.disabled = false;
+                    console.error("Could not delete account.", error);
+                    showToast(error.message || "Could not delete your account.", "error");
+                }
+            });
         }
 
         function openProfileEditor(editor, editButton) {
@@ -688,7 +985,7 @@
                 }
 
                 const headerLabel = document.getElementById("headerUserLabel");
-                headerLabel.textContent = `${currentUser.name} (${currentUser.role}) - ${currentUser.barangay || "Polangui"}`;
+                headerLabel.textContent = formatUserIdentity(currentUser);
                 toggleProfileModal(true);
                 showToast(
                     localCopyFailed
@@ -717,7 +1014,7 @@
 
                 ensureSettingsInterface();
                 document.getElementById("profileName").textContent = currentUser.name || "Not provided";
-                document.getElementById("profileRole").textContent = currentUser.role || "Not provided";
+                document.getElementById("profileRole").textContent = formatRoleBadge(currentUser.role);
                 document.getElementById("profileBirthdate").textContent = currentUser.birthdate || "Not provided";
                 document.getElementById("profileContact").textContent = currentUser.contact || "Not provided";
                 document.getElementById("profileEmail").textContent = currentUser.email || "Not provided";
@@ -2539,6 +2836,10 @@
                 renderVendorDashboard();
             } else if (page === "rider" || page === "delivery") {
                 renderRiderDashboard();
+            } else if (page === "admin") {
+                loadAdminDashboard().catch(error => {
+                    showToast(error.message || "Could not load the admin dashboard.", "error");
+                });
             }
         }
 
@@ -2562,7 +2863,8 @@
             const rolePageAllowed = {
                 Customer: ["customer", "products", "payment", "reviews"],
                 Vendor: ["vendor"],
-                Rider: ["rider", "delivery"]
+                Rider: ["rider", "delivery"],
+                Admin: ["admin"]
             };
 
             if (!currentUser) {
@@ -2589,7 +2891,7 @@
 
             document.querySelectorAll(".userName").forEach(el => { el.textContent = currentUser.name; });
             document.getElementById("headerUserLabel").textContent =
-                `${currentUser.name} (${currentUser.role}) - ${currentUser.barangay || "Polangui"}`;
+                formatUserIdentity(currentUser);
             renderAuthHeaderButtons();
             try {
                 await loadProductsFromDatabase();
@@ -2615,13 +2917,17 @@
             }
             let orderRefreshErrorShown = false;
             window.setInterval(async () => {
-                if (document.hidden || !["customer", "vendor", "rider", "delivery"].includes(page)) {
+                if (document.hidden || !["customer", "vendor", "rider", "delivery", "admin"].includes(page)) {
                     return;
                 }
                 try {
-                    await loadOrdersFromDatabase();
+                    if (page === "admin") {
+                        await loadAdminDashboard();
+                    } else {
+                        await loadOrdersFromDatabase();
+                        renderAll();
+                    }
                     orderRefreshErrorShown = false;
-                    renderAll();
                 } catch (error) {
                     console.error("Could not refresh orders from MongoDB.", error);
                     if (!orderRefreshErrorShown) {

@@ -152,8 +152,8 @@
 
     </main>
         <!-- PROFILE MODAL -->
-        <div id="profileModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-            <div class="glass-card w-full max-w-lg p-6 rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div id="profileModal" class="fixed inset-0 z-50 hidden justify-end bg-slate-900/50 backdrop-blur-sm" onclick="if (event.target === this) toggleSettingsModal(false)">
+            <div class="glass-card relative h-[calc(100%-1.5rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl my-3 mr-3">
                 <button type="button" onclick="toggleProfileModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold" aria-label="Close profile">✕</button>
                 <h2 class="text-2xl font-bold text-sage-800 mb-5">My Profile</h2>
                 <div class="flex flex-col items-center mb-6">

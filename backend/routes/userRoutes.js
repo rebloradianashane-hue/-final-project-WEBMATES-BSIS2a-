@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const User = require('../models/user'); 
 const protectRoute = require('../middleware/authMiddleware'); // Import para sa Step 10: Route Protection
+const { requireRole } = protectRoute;
 const { createAccount, publicAccount } = require('../utils/account');
 const { requireSession, revokeUserSessions } = require('../middleware/sessionAuth');
 
@@ -88,7 +89,7 @@ router.post('/', async (req, res) => {
 // ==========================================
 // 2. GET: Fetch all users (GET /api/users)
 // ==========================================
-router.get('/', async (req, res) => {
+router.get('/', requireSession, requireRole('Admin'), async (req, res) => {
     try {
         const users = await User.find({ deletedAt: null });
         res.status(200).json(users.map(publicAccount));

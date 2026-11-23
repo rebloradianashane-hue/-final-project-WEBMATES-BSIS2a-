@@ -18,8 +18,18 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         required: true,
-        enum: ['Customer', 'Vendor', 'Rider'],
+        enum: ['Customer', 'Vendor', 'Rider', 'Admin'],
         default: 'Customer'
+    },
+    adminLevel: {
+        type: String,
+        enum: ['super_admin', 'sub_admin'],
+        default: null
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
     },
     password: {
         type: String,
