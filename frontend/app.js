@@ -5,7 +5,7 @@
         const localFrontendHosts = ["localhost", "127.0.0.1"];
         const API_BASE_URL = localFrontendHosts.includes(window.location.hostname)
             ? `${window.location.protocol}//${window.location.hostname}:${window.location.port === "5000" ? window.location.port : "5000"}`
-            : "https://final-project-webmates-bsis2a-l8zw.onrender.com";
+            : "https://final-project-webmates-bsis2a-v2g3.onrender.com";
         const initialProducts = [];
         const removedProductIds = new Set(["P1", "P2", "P3", "P4"]);
 
