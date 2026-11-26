@@ -2063,7 +2063,7 @@
                         heading.appendChild(deleteButton);
                     }
                     const comment = document.createElement("p");
-                    comment.className = "mt-2 text-sm text-black whitespace-pre-wrap";
+                    comment.className = "review-comment mt-2 text-sm whitespace-pre-wrap";
                     comment.textContent = review.comment || "";
                     const date = document.createElement("p");
                     date.className = "mt-1 text-xs text-slate-400";
@@ -2178,7 +2178,7 @@
                 heading.append(productName, deleteButton);
 
                 const comment = document.createElement("p");
-                comment.className = "mt-2 text-sm text-black whitespace-pre-wrap";
+                comment.className = "review-comment mt-2 text-sm whitespace-pre-wrap";
                 comment.textContent = review.comment || "";
                 const date = document.createElement("p");
                 date.className = "mt-1 text-xs text-slate-400";
