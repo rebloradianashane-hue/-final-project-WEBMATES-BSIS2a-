@@ -3,10 +3,14 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
+    if (!process.env.MONGO_URI) {
+      throw new Error('MONGO_URI environment variable is required.');
+    }
+
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("MongoDB Connected");
+    console.log(`MongoDB Connected: ${mongoose.connection.name}`);
   } catch (err) {
-    console.error(err.message);
+    console.error(`MongoDB connection error: ${err.message}`);
     process.exit(1);
   }
 };

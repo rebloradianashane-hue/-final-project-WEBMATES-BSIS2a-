@@ -1,16 +1,11 @@
 const protectRoute = (req, res, next) => {
-  if (!req.authUser) {
+  // Sinusuri kung may kasamang 'role' ang request headers
+  if (!req.headers.role) {
     return res.status(401).json({ message: 'Unauthorized access' });
   }
-  next();
-};
-
-const requireRole = (...allowedRoles) => (req, res, next) => {
-  if (!req.authUser || !allowedRoles.includes(req.authUser.role)) {
-    return res.status(403).json({ error: 'You do not have permission to access this resource.' });
-  }
+  
+  // Kung mayroon, itutuloy na nito ang pagproseso sa sunod na function/route
   next();
 };
 
 module.exports = protectRoute;
-module.exports.requireRole = requireRole;

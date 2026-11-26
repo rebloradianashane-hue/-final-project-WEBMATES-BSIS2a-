@@ -20,6 +20,21 @@ async function verifyPassword(password, storedPassword) {
   return crypto.timingSafeEqual(key, Buffer.from(storedKey, 'hex'));
 }
 
+function isValidBirthdate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const birthdate = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(birthdate.getTime()) || birthdate.toISOString().slice(0, 10) !== value) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  return birthdate <= today;
+}
+
 async function createAccount(account) {
   const user = new User({
     ...account,
@@ -39,4 +54,4 @@ function publicAccount(user) {
   };
 }
 
-module.exports = { createAccount, hashPassword, publicAccount, verifyPassword };
+module.exports = { createAccount, hashPassword, isValidBirthdate, publicAccount, verifyPassword };

@@ -18,18 +18,8 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         required: true,
-        enum: ['Customer', 'Vendor', 'Rider', 'Admin'],
+        enum: ['Customer', 'Vendor', 'Rider'],
         default: 'Customer'
-    },
-    adminLevel: {
-        type: String,
-        enum: ['super_admin', 'sub_admin'],
-        default: null
-    },
-    createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        default: null
     },
     password: {
         type: String,
@@ -46,6 +36,13 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true
+    },
+    birthdate: {
+        type: String,
+        trim: true,
+        required: function () {
+            return this.isNew && this.role !== 'Admin';
+        }
     },
     businessRole: { type: String, trim: true },
     badgeNumber: { type: String, trim: true },

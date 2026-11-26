@@ -1,7 +1,7 @@
 
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { createAccount, publicAccount } = require('../utils/account');
+const { createAccount, isValidBirthdate, publicAccount } = require('../utils/account');
 const { createSession } = require('../middleware/sessionAuth');
 
 const router = express.Router();
@@ -13,6 +13,7 @@ router.post(
     body('email').trim().isEmail().withMessage('Valid email is required'),
     body('address').trim().notEmpty().withMessage('Address is required'),
     body('contactNumber').trim().matches(/^09\d{9}$/).withMessage('Enter a valid 11-digit mobile number starting with 09'),
+    body('birthdate').custom(isValidBirthdate).withMessage('Enter a valid birthdate that is not in the future.'),
     body('role').isIn(['Customer', 'Vendor', 'Rider']).withMessage('Please select a valid account role'),
     body('password')
       .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
@@ -25,11 +26,12 @@ router.post(
       return res.status(400).json({ error: errors.array()[0].msg, errors: errors.array() });
     }
 
-    const { name, email, address, role, password, contactNumber } = req.body;
+    const { name, email, address, role, password, contactNumber, birthdate } = req.body;
     const accountDetails = {
       name,
       email,
       address,
+      birthdate,
       role,
       password,
       contactNumber,

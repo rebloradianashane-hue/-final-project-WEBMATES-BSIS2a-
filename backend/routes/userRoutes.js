@@ -3,8 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const User = require('../models/user'); 
 const protectRoute = require('../middleware/authMiddleware'); // Import para sa Step 10: Route Protection
-const { requireRole } = protectRoute;
-const { createAccount, publicAccount } = require('../utils/account');
+const { createAccount, isValidBirthdate, publicAccount } = require('../utils/account');
 const { requireSession, revokeUserSessions } = require('../middleware/sessionAuth');
 
 // ==========================================
@@ -18,6 +17,7 @@ router.post('/register',
     body('name').trim().notEmpty().withMessage('Full name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
     body('contactNumber').trim().matches(/^09\d{9}$/).withMessage('Enter a valid 11-digit mobile number starting with 09'),
+    body('birthdate').custom(isValidBirthdate).withMessage('Enter a valid birthdate that is not in the future.'),
     
     // Step 7: Password Strengthening rules
     body('password')
@@ -36,10 +36,10 @@ router.post('/register',
     }
 
     try {
-      const { name, contactNumber, password, userRole, email } = req.body;
+      const { name, contactNumber, password, userRole, email, birthdate } = req.body;
       const role = normalizeRole(userRole);
       const savedUser = await createAccount({
-        name, contactNumber, email, password, role, address: req.body.address || 'Not Provided Yet'
+        name, contactNumber, email, password, role, birthdate, address: req.body.address || 'Not Provided Yet'
       });
       res.status(201).json({ message: 'User created successfully!', user: publicAccount(savedUser) });
     } catch (error) {
@@ -54,11 +54,14 @@ router.post('/register',
 // Route B: POST /api/users (Standard RESTful creation)
 router.post('/', async (req, res) => {
     try {
-        const { name, email, password, contactNumber, userRole } = req.body;
+        const { name, email, password, contactNumber, userRole, birthdate } = req.body;
         
         // Require email here too so the REST signup route matches the other signup flows.
-        if (!name || !email || !password || !contactNumber) {
-            return res.status(400).json({ error: 'Name, email, contact number, and password are required.' });
+        if (!name || !email || !password || !contactNumber || !birthdate) {
+            return res.status(400).json({ error: 'Name, email, contact number, birthdate, and password are required.' });
+        }
+        if (!isValidBirthdate(birthdate)) {
+            return res.status(400).json({ error: 'Enter a valid birthdate that is not in the future.' });
         }
         if (!/^09\d{9}$/.test(contactNumber.trim())) {
             return res.status(400).json({ error: 'Enter a valid 11-digit mobile number starting with 09.' });
@@ -74,6 +77,7 @@ router.post('/', async (req, res) => {
             contactNumber,
             password,
             role,
+            birthdate,
             address: req.body.address || "Not Provided Yet"
         });
 
@@ -89,7 +93,7 @@ router.post('/', async (req, res) => {
 // ==========================================
 // 2. GET: Fetch all users (GET /api/users)
 // ==========================================
-router.get('/', requireSession, requireRole('Admin'), async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const users = await User.find({ deletedAt: null });
         res.status(200).json(users.map(publicAccount));

@@ -17,10 +17,8 @@
             .filter(product => !removedProductIds.has(product.id));
         let orders = [];
         let reviews = [];
-        let cart = JSON.parse(localStorage.getItem("atudtaCart") || "[]")
-            .filter(item => !removedProductIds.has(item.productId));
+        let cart = [];
         localStorage.setItem("atudtaProducts", JSON.stringify(products));
-        localStorage.setItem("atudtaCart", JSON.stringify(cart));
         const DELIVERY_FEE = 58;
         let selectedCartProductIds = new Set();
         
@@ -30,6 +28,27 @@
         let riderCurrentLocation = null;
         let riderLocationRequestPending = false;
         let selectedProductId = null;
+
+        function getCartStorageKey(userId) {
+            return `atudtaCart:${encodeURIComponent(userId)}`;
+        }
+
+        function loadCartForUser(user) {
+            if (!user?.id) {
+                return [];
+            }
+            const savedCart = JSON.parse(localStorage.getItem(getCartStorageKey(user.id)) || "[]");
+            return Array.isArray(savedCart)
+                ? savedCart.filter(item => !removedProductIds.has(item.productId))
+                : [];
+        }
+
+        function saveCartForCurrentUser() {
+            if (!currentUser?.id) {
+                throw new Error("Cannot save cart without a signed-in user.");
+            }
+            localStorage.setItem(getCartStorageKey(currentUser.id), JSON.stringify(cart));
+        }
 
         function getProductStock(product) {
             const stock = Number(product.stock);
@@ -109,208 +128,6 @@
             reviews = loadedReviews;
         }
 
-        async function createAdminUser(event) {
-            event.preventDefault();
-            const form = event.currentTarget;
-            const submitButton = form.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            const adminUser = {
-                name: document.getElementById("adminName").value,
-                email: document.getElementById("adminEmail").value,
-                password: document.getElementById("adminPassword").value,
-                contactNumber: document.getElementById("adminContact").value,
-                address: document.getElementById("adminAddress").value
-            };
-            try {
-                const result = await apiRequest("/api/admin/users", {
-                    method: "POST",
-                    body: JSON.stringify(adminUser)
-                });
-                showToast(result.message, "success");
-                form.reset();
-                await loadAdminDashboard();
-            } catch (error) {
-                showToast(error.message || "Could not create the Admin User.", "error");
-            } finally {
-                submitButton.disabled = false;
-            }
-        }
-
-        async function loadAdminDashboard() {
-            if (currentUser?.role !== "Admin") {
-                return;
-            }
-            const [dashboard, allUsers] = await Promise.all([
-                apiRequest("/api/admin/dashboard"),
-                apiRequest("/api/admin/users")
-            ]);
-
-            document.getElementById("adminActiveUsers").textContent = dashboard.users.active;
-            document.getElementById("adminSuspendedUsers").textContent = dashboard.users.suspended;
-            document.getElementById("adminCustomers").textContent = dashboard.users.customers;
-            document.getElementById("adminVendors").textContent = dashboard.users.vendors;
-            document.getElementById("adminRiders").textContent = dashboard.users.riders;
-            document.getElementById("adminProducts").textContent = dashboard.products;
-            document.getElementById("adminOrders").textContent = dashboard.orders;
-            document.getElementById("adminDeliveries").textContent = dashboard.deliveries;
-
-            const tableBody = document.getElementById("adminUsersTableBody");
-            tableBody.replaceChildren();
-            allUsers.forEach(user => {
-                const row = document.createElement("tr");
-                const suspended = Boolean(user.deletedAt);
-                const roleLabel = user.role === "Admin"
-                    ? (user.adminLevel === "super_admin" ? "Super Admin" : "Admin User")
-                    : user.role;
-                const actionDisabled = user.role === "Admin" &&
-                    (user.adminLevel === "super_admin" || dashboard.currentAdminLevel !== "super_admin");
-                const createdByLabel = user.role === "Admin" && user.adminLevel === "sub_admin"
-                    ? `<span class="mt-1 block text-xs font-semibold text-slate-500">Created by ATUDTA Super Admin</span>`
-                    : "";
-                row.innerHTML = `
-                    <td class="px-4 py-3 text-sm font-extrabold text-slate-800">${escapeHtml(user.name)}${createdByLabel}</td>
-                    <td class="px-4 py-3 break-all text-sm font-medium text-slate-600">${escapeHtml(user.email)}</td>
-                    <td class="px-4 py-3">
-                        <span class="${user.role === "Admin" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"} px-2.5 py-1 rounded-full text-sm font-extrabold">
-                            ${escapeHtml(roleLabel)}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3">
-                        <span class="${suspended ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"} px-2.5 py-1 rounded-full text-sm font-extrabold">
-                            ${suspended ? "Suspended" : "Active"}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3 text-right">
-                        ${actionDisabled ? '<span class="text-sm font-semibold text-slate-400">Protected</span>' :
-                            `<div class="flex justify-end gap-3">
-                                <button type="button" data-admin-status-id="${escapeHtml(user.id)}" data-suspended="${suspended}"
-                                    class="${suspended ? "text-emerald-700" : "text-rose-700"} text-sm font-bold hover:underline">
-                                    ${suspended ? "Restore" : "Suspend"}
-                                </button>
-                                ${user.role === "Admin" && user.adminLevel === "sub_admin"
-                                    ? `<button type="button" data-admin-delete-id="${escapeHtml(user.id)}" class="text-sm font-bold text-rose-800 hover:underline">Delete</button>`
-                                    : ""}
-                            </div>`}
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-
-            tableBody.querySelectorAll("[data-admin-status-id]").forEach(button => {
-                button.addEventListener("click", () => updateAdminUserStatus(
-                    button.dataset.adminStatusId,
-                    button.dataset.suspended !== "true"
-                ));
-            });
-            tableBody.querySelectorAll("[data-admin-delete-id]").forEach(button => {
-                button.addEventListener("click", () => deleteAdminUser(button.dataset.adminDeleteId));
-            });
-
-            const settingsAdminAccountsList = document.getElementById("settingsAdminAccountsList");
-            if (settingsAdminAccountsList && dashboard.currentAdminLevel === "super_admin") {
-                const adminAccounts = allUsers.filter(user =>
-                    user.role === "Admin" &&
-                    user.adminLevel === "sub_admin"
-                );
-                settingsAdminAccountsList.replaceChildren();
-                if (adminAccounts.length === 0) {
-                    const empty = document.createElement("p");
-                    empty.className = "rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-500";
-                    empty.textContent = "No Admin User accounts created yet.";
-                    settingsAdminAccountsList.appendChild(empty);
-                } else {
-                    adminAccounts.forEach(user => {
-                        const card = document.createElement("article");
-                        card.className = "rounded-xl border border-slate-200 bg-white p-4";
-                        card.innerHTML = `
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="break-words text-sm font-extrabold text-slate-900">${escapeHtml(user.name)}</p>
-                                    <p class="mt-1 break-all text-sm font-bold text-slate-600">${escapeHtml(user.email)}</p>
-                                    <p class="mt-2 text-xs font-extrabold ${user.deletedAt ? "text-rose-700" : "text-emerald-700"}">
-                                        ${user.deletedAt ? "Suspended" : "Active"}
-                                    </p>
-                                </div>
-                                <button type="button" data-settings-admin-delete-id="${escapeHtml(user.id)}"
-                                    class="shrink-0 text-sm font-extrabold text-rose-700 hover:underline">Delete</button>
-                            </div>
-                        `;
-                        settingsAdminAccountsList.appendChild(card);
-                    });
-
-                    settingsAdminAccountsList.querySelectorAll("[data-settings-admin-delete-id]").forEach(button => {
-                        button.addEventListener("click", () => deleteAdminUser(button.dataset.settingsAdminDeleteId));
-                    });
-                }
-            }
-        }
-
-        function escapeHtml(value) {
-            const element = document.createElement("span");
-            element.textContent = String(value ?? "");
-            return element.innerHTML;
-        }
-
-        async function updateAdminUserStatus(userId, suspended) {
-            try {
-                const result = await apiRequest(`/api/admin/users/${encodeURIComponent(userId)}/status`, {
-                    method: "PATCH",
-                    body: JSON.stringify({ suspended })
-                });
-                showToast(result.message, "success");
-                await loadAdminDashboard();
-            } catch (error) {
-                showToast(error.message || "Could not update the user.", "error");
-            }
-        }
-
-        async function deleteAdminUser(userId) {
-            const modal = document.getElementById("deleteAdminModal");
-            const confirmButton = document.getElementById("confirmDeleteAdminButton");
-            const cancelButton = document.getElementById("cancelDeleteAdminButton");
-            if (!modal || !confirmButton || !cancelButton) {
-                return;
-            }
-
-            confirmButton.disabled = false;
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-
-            const closeModal = () => {
-                modal.classList.add("hidden");
-                modal.classList.remove("flex");
-                confirmButton.onclick = null;
-                cancelButton.onclick = null;
-                document.removeEventListener("keydown", handleModalEscape);
-            };
-
-            const handleModalEscape = (event) => {
-                if (event.key === "Escape") {
-                    closeModal();
-                }
-            };
-            document.addEventListener("keydown", handleModalEscape);
-
-            cancelButton.onclick = closeModal;
-            confirmButton.onclick = async () => {
-                confirmButton.disabled = true;
-                await performAdminUserDelete(userId);
-                closeModal();
-            };
-        }
-
-        async function performAdminUserDelete(userId) {
-            try {
-                const result = await apiRequest(`/api/admin/users/${encodeURIComponent(userId)}`, {
-                    method: "DELETE"
-                });
-                showToast(result.message, "success");
-                await loadAdminDashboard();
-            } catch (error) {
-                showToast(error.message || "Could not delete the Admin User.", "error");
-            }
-        }
-
         // Sound Effects via Web Audio API
         function playChime() {
             try {
@@ -335,24 +152,152 @@
         function showToast(message, type = "success") {
             const container = document.getElementById("toastContainer");
             const toast = document.createElement("div");
-            const borderColor = type === "success" ? "border-emerald-500" : "border-rose-500";
-            toast.className = `bg-white ${borderColor} border-l-4 text-black px-5 py-4 rounded-xl shadow-2xl flex items-start justify-between gap-3 toast-slide pointer-events-auto`;
-
-            const text = document.createElement("span");
-            text.className = "break-words text-base font-black text-black leading-snug";
-            text.textContent = message;
-
-            const closeButton = document.createElement("button");
-            closeButton.type = "button";
-            closeButton.className = "ml-1 shrink-0 text-lg font-black text-black leading-none";
-            closeButton.setAttribute("aria-label", "Close notification");
-            closeButton.textContent = "✕";
-            closeButton.addEventListener("click", () => toast.remove());
-
-            toast.append(text, closeButton);
+            const bgColor = type === "success" ? "bg-emerald-600" : "bg-spink-600";
+            toast.className = `${bgColor} text-white px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center justify-between toast-slide pointer-events-auto`;
+            toast.innerHTML = `<span>${message}</span> <button onclick="this.parentElement.remove()" class="ml-3 font-bold">✕</button>`;
             container.appendChild(toast);
             playChime();
             setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        let confirmationDialogSequence = 0;
+
+        function showConfirmation({
+            title,
+            message,
+            confirmLabel,
+            danger = false,
+            summaryRows = [],
+            highlightedTotal,
+            footerMessage
+        }) {
+            return new Promise(resolve => {
+                const previousFocus = document.activeElement;
+                const dialogId = `confirmation-dialog-${++confirmationDialogSequence}`;
+                const overlay = document.createElement("div");
+                overlay.className = "fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4";
+
+                const dialog = document.createElement("section");
+                dialog.className = "w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl";
+                dialog.setAttribute("role", "dialog");
+                dialog.setAttribute("aria-modal", "true");
+                dialog.setAttribute("aria-labelledby", `${dialogId}-title`);
+                dialog.setAttribute("aria-describedby", `${dialogId}-message`);
+
+                const heading = document.createElement("h2");
+                heading.id = `${dialogId}-title`;
+                heading.className = "text-xl font-bold text-slate-800";
+                heading.textContent = title;
+
+                const detail = document.createElement("p");
+                detail.id = `${dialogId}-message`;
+                detail.className = "mt-3 whitespace-pre-line text-sm leading-6 text-slate-600";
+                detail.textContent = message;
+
+                let summary;
+                if (summaryRows.length || highlightedTotal) {
+                    summary = document.createElement("div");
+                    summary.className = "mt-4 space-y-2 rounded-xl bg-slate-50 p-4 text-sm";
+
+                    summaryRows.forEach(row => {
+                        const summaryRow = document.createElement("div");
+                        summaryRow.className = "flex justify-between gap-3 text-slate-600";
+
+                        const label = document.createElement("span");
+                        label.textContent = row.label;
+
+                        const value = document.createElement("span");
+                        value.className = "font-semibold";
+                        value.textContent = row.value;
+
+                        summaryRow.append(label, value);
+                        summary.appendChild(summaryRow);
+                    });
+
+                    if (highlightedTotal) {
+                        const totalRow = document.createElement("div");
+                        totalRow.className = "flex items-center justify-between gap-3 border-t border-rose-200 bg-rose-50 px-3 py-2";
+
+                        const totalLabel = document.createElement("span");
+                        totalLabel.className = "font-bold text-slate-700";
+                        totalLabel.textContent = "Order total";
+
+                        const totalValue = document.createElement("span");
+                        totalValue.className = "text-xl font-black text-spink-600";
+                        totalValue.textContent = highlightedTotal;
+
+                        totalRow.append(totalLabel, totalValue);
+                        summary.appendChild(totalRow);
+                    }
+                }
+
+                let footer;
+                if (footerMessage) {
+                    footer = document.createElement("p");
+                    footer.className = "mt-4 text-sm font-semibold text-slate-700";
+                    footer.textContent = footerMessage;
+                }
+
+                const actions = document.createElement("div");
+                actions.className = "mt-6 flex justify-end gap-3";
+
+                const cancelButton = document.createElement("button");
+                cancelButton.type = "button";
+                cancelButton.className = "rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200";
+                cancelButton.textContent = "Cancel";
+
+                const confirmButton = document.createElement("button");
+                confirmButton.type = "button";
+                confirmButton.className = danger
+                    ? "rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-rose-700"
+                    : "rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700";
+                confirmButton.textContent = confirmLabel;
+
+                actions.append(cancelButton, confirmButton);
+                dialog.append(heading, detail);
+                if (summary) {
+                    dialog.appendChild(summary);
+                }
+                if (footer) {
+                    dialog.appendChild(footer);
+                }
+                dialog.appendChild(actions);
+                overlay.appendChild(dialog);
+                document.body.appendChild(overlay);
+
+                let settled = false;
+                const finish = confirmed => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    document.removeEventListener("keydown", handleKeydown);
+                    overlay.remove();
+                    if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+                        previousFocus.focus();
+                    }
+                    resolve(confirmed);
+                };
+                const handleKeydown = event => {
+                    if (event.key === "Escape") {
+                        event.preventDefault();
+                        finish(false);
+                    } else if (event.key === "Tab") {
+                        event.preventDefault();
+                        (document.activeElement === cancelButton ? confirmButton : cancelButton).focus();
+                    }
+                };
+
+                cancelButton.addEventListener("click", () => finish(false));
+                confirmButton.addEventListener("click", () => finish(true));
+                overlay.addEventListener("click", event => {
+                    if (event.target === overlay) {
+                        finish(false);
+                    }
+                });
+                document.addEventListener("keydown", handleKeydown);
+                cancelButton.focus();
+            });
         }
 
         // Synchronization across tabs
@@ -381,22 +326,13 @@
         function saveData() {
             localStorage.setItem("atudtaUsers", JSON.stringify(users));
             localStorage.setItem("atudtaProducts", JSON.stringify(products));
-            localStorage.setItem("atudtaCart", JSON.stringify(cart));
+            saveCartForCurrentUser();
         }
 
         // ==========================================
         // PAGE & AUTHENTICATION NAVIGATION LOGIC
         // ==========================================
-        const rolePages = { Vendor: "vendor.html", Customer: "products.html", Rider: "rider.html", Admin: "admin.html" };
-        function formatRoleBadge(role) {
-            return role === "Admin" ? "[ADMIN]" : role || "Not provided";
-        }
-
-        function formatUserIdentity(user) {
-            const roleBadge = user?.role === "Admin" ? " [ADMIN]" : "";
-            return `${user.name}${roleBadge} - ${user.barangay || "Polangui"}`;
-        }
-
+        const rolePages = { Vendor: "vendor.html", Customer: "products.html", Rider: "rider.html" };
         const pageRoutes = {
             loginPage: "login.html",
             signupPage: "signup.html",
@@ -624,51 +560,11 @@
             settingsTitle.className = "mb-5 text-2xl font-bold text-sage-800";
             settingsTitle.textContent = "Settings";
             settingsHome.appendChild(settingsTitle);
-            if (currentUser?.role !== "Admin") {
-                settingsHome.append(
-                    createSettingsMenuItem("My Profile", "View or update your profile details", "fa-solid fa-user", () => toggleProfileModal(true))
-                );
-            }
             settingsHome.append(
+                createSettingsMenuItem("My Profile", "View or update your profile details", "fa-solid fa-user", () => toggleProfileModal(true)),
                 createSettingsMenuItem("Privacy and Policy", "Learn how account and order data is handled", "fa-solid fa-shield-halved", () => showSettingsView("settingsPrivacy")),
                 createSettingsMenuItem("Account deletion", "Delete your account and sign out", "fa-solid fa-user-slash", event => deleteAccount(event), "border-rose-200 hover:border-rose-300 hover:bg-rose-50")
             );
-            if (currentUser?.role === "Admin" && currentUser.adminLevel === "super_admin") {
-                settingsHome.append(
-                    createSettingsMenuItem(
-                        "Admin Users",
-                        "Add or delete subordinate Admin accounts",
-                        "fa-solid fa-user-shield",
-                        () => showSettingsView("settingsAdminUsers")
-                    )
-                );
-            }
-
-            const adminUsersView = document.createElement("section");
-            adminUsersView.id = "settingsAdminUsers";
-            adminUsersView.className = "hidden space-y-4";
-            const adminBackButton = document.createElement("button");
-            adminBackButton.type = "button";
-            adminBackButton.className = "mb-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800";
-            adminBackButton.textContent = "← Settings";
-            adminBackButton.addEventListener("click", () => showSettingsView("settingsHome"));
-            adminUsersView.appendChild(adminBackButton);
-
-            const createAdminForm = document.getElementById("createAdminForm");
-            if (createAdminForm) {
-                createAdminForm.classList.remove("hidden", "mb-6");
-                createAdminForm.classList.add("border-0", "shadow-none", "p-0");
-                adminUsersView.appendChild(createAdminForm);
-            }
-
-            const adminAccountsSection = document.createElement("section");
-            adminAccountsSection.className = "mt-6 border-t border-slate-200 pt-5";
-            adminAccountsSection.innerHTML = `
-                <h3 class="text-lg font-extrabold text-slate-800">My Admin Accounts</h3>
-                <p class="mt-1 text-xs font-bold text-slate-500">Accounts created under this Super Admin.</p>
-                <div id="settingsAdminAccountsList" class="mt-3 space-y-3"></div>
-            `;
-            adminUsersView.appendChild(adminAccountsSection);
 
             const privacyView = document.createElement("section");
             privacyView.id = "settingsPrivacy";
@@ -705,12 +601,12 @@
             profileBackButton.addEventListener("click", () => showSettingsView("settingsHome"));
             profileView.insertBefore(profileBackButton, profileView.firstChild);
 
-            modalContent.append(settingsHome, privacyView, profileView, adminUsersView);
+            modalContent.append(settingsHome, privacyView, profileView);
         }
 
         function showSettingsView(viewId) {
             ensureSettingsInterface();
-            ["settingsHome", "settingsPrivacy", "profileDetailsView", "settingsAdminUsers"].forEach(id => {
+            ["settingsHome", "settingsPrivacy", "profileDetailsView"].forEach(id => {
                 document.getElementById(id).classList.toggle("hidden", id !== viewId);
             });
         }
@@ -728,7 +624,6 @@
                 showSettingsView("settingsHome");
             }
             modal.classList.toggle("hidden", !open);
-            modal.classList.toggle("flex", open);
         }
 
         function createProfileEditField(form, id, labelText, value, options = {}) {
@@ -840,65 +735,34 @@
             if (!currentUser) {
                 return;
             }
-            const existingModal = document.getElementById("deleteAccountModal");
-            if (existingModal) {
-                existingModal.remove();
+            if (!await showConfirmation({
+                title: "Delete your account",
+                message: "You will no longer be able to sign in. The account record will be retained in the database as deleted.",
+                confirmLabel: "Delete Account",
+                danger: true
+            })) {
+                return;
             }
 
-            const modal = document.createElement("div");
-            modal.id = "deleteAccountModal";
-            modal.className = "fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 px-4";
-            modal.setAttribute("role", "dialog");
-            modal.setAttribute("aria-modal", "true");
-            modal.setAttribute("aria-labelledby", "deleteAccountTitle");
-            modal.innerHTML = `
-                <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl">
-                    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-2xl text-rose-700">
-                        <i class="fa-solid fa-user-slash"></i>
-                    </div>
-                    <h2 id="deleteAccountTitle" class="text-xl font-extrabold text-slate-900">Delete Account?</h2>
-                    <p class="mt-2 text-sm font-bold leading-6 text-slate-700">
-                        Are you sure you want to delete your ${escapeHtml(currentUser.role)} account?
-                        You will no longer be able to sign in.
-                    </p>
-                    <div class="mt-6 flex justify-center gap-3">
-                        <button id="cancelDeleteAccountButton" type="button" class="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-extrabold text-slate-800 hover:bg-slate-50">Cancel</button>
-                        <button id="confirmDeleteAccountButton" type="button" class="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-rose-700">Delete Account</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            const closeModal = () => modal.remove();
-            document.getElementById("cancelDeleteAccountButton").addEventListener("click", closeModal);
-            modal.addEventListener("click", clickEvent => {
-                if (clickEvent.target === modal) {
-                    closeModal();
-                }
-            });
-
-            document.getElementById("confirmDeleteAccountButton").addEventListener("click", async confirmEvent => {
-                const button = confirmEvent.currentTarget;
-                button.disabled = true;
+            const button = event.currentTarget;
+            button.disabled = true;
+            try {
+                await apiRequest("/api/auth/profile", { method: "DELETE" });
+                users = users.filter(user => user.id !== currentUser.id);
                 try {
-                    await apiRequest("/api/auth/profile", { method: "DELETE" });
-                    users = users.filter(user => user.id !== currentUser.id);
-                    try {
-                        localStorage.setItem("atudtaUsers", JSON.stringify(users));
-                    } catch (error) {
-                        console.error("Deleted account could not be removed from this browser's cached users.", error);
-                    }
-                    sessionStorage.removeItem("atudtaAuthToken");
-                    sessionStorage.removeItem("atudtaSession");
-                    closeModal();
-                    showToast("Your account has been deleted.");
-                    window.setTimeout(() => window.location.replace("login.html"), 700);
+                    localStorage.setItem("atudtaUsers", JSON.stringify(users));
                 } catch (error) {
-                    button.disabled = false;
-                    console.error("Could not delete account.", error);
-                    showToast(error.message || "Could not delete your account.", "error");
+                    console.error("Deleted account could not be removed from this browser's cached users.", error);
                 }
-            });
+                sessionStorage.removeItem("atudtaAuthToken");
+                sessionStorage.removeItem("atudtaSession");
+                showToast("Your account has been deleted.");
+                window.setTimeout(() => window.location.replace("login.html"), 1800);
+            } catch (error) {
+                button.disabled = false;
+                console.error("Could not delete account.", error);
+                showToast(error.message || "Could not delete your account.", "error");
+            }
         }
 
         function openProfileEditor(editor, editButton) {
@@ -985,7 +849,7 @@
                 }
 
                 const headerLabel = document.getElementById("headerUserLabel");
-                headerLabel.textContent = formatUserIdentity(currentUser);
+                headerLabel.textContent = `${currentUser.name} (${currentUser.role}) - ${currentUser.barangay || "Polangui"}`;
                 toggleProfileModal(true);
                 showToast(
                     localCopyFailed
@@ -1014,7 +878,7 @@
 
                 ensureSettingsInterface();
                 document.getElementById("profileName").textContent = currentUser.name || "Not provided";
-                document.getElementById("profileRole").textContent = formatRoleBadge(currentUser.role);
+                document.getElementById("profileRole").textContent = currentUser.role || "Not provided";
                 document.getElementById("profileBirthdate").textContent = currentUser.birthdate || "Not provided";
                 document.getElementById("profileContact").textContent = currentUser.contact || "Not provided";
                 document.getElementById("profileEmail").textContent = currentUser.email || "Not provided";
@@ -1095,6 +959,149 @@
             reader.readAsDataURL(file);
         });
 
+        function initializeSignupBirthdatePicker() {
+            const field = document.getElementById("signupBirthdateField");
+            if (!field) {
+                return;
+            }
+
+            const dateInput = document.getElementById("signupBirthdate");
+            const trigger = document.getElementById("signupBirthdateButton");
+            const display = document.getElementById("signupBirthdateDisplay");
+            const picker = document.getElementById("signupBirthdatePicker");
+            const monthSelect = document.getElementById("signupBirthdateMonth");
+            const yearSelect = document.getElementById("signupBirthdateYear");
+            const daysGrid = document.getElementById("signupBirthdateDays");
+            const today = new Date();
+            const currentYear = today.getUTCFullYear();
+            const todayValue = today.toISOString().slice(0, 10);
+            const months = Array.from({ length: 12 }, (_, month) =>
+                new Intl.DateTimeFormat(undefined, { month: "long", timeZone: "UTC" })
+                    .format(new Date(Date.UTC(2020, month, 1))));
+
+            months.forEach((month, index) => {
+                const option = document.createElement("option");
+                option.value = String(index);
+                option.textContent = month;
+                monthSelect.appendChild(option);
+            });
+            for (let year = currentYear; year >= 1900; year -= 1) {
+                const option = document.createElement("option");
+                option.value = String(year);
+                option.textContent = String(year);
+                yearSelect.appendChild(option);
+            }
+            monthSelect.value = String(today.getUTCMonth());
+            yearSelect.value = String(currentYear);
+
+            const formatDate = value => new Intl.DateTimeFormat(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                timeZone: "UTC"
+            }).format(new Date(`${value}T00:00:00.000Z`));
+
+            const closePicker = restoreFocus => {
+                picker.classList.add("hidden");
+                trigger.setAttribute("aria-expanded", "false");
+                if (restoreFocus) {
+                    trigger.focus();
+                }
+            };
+
+            const renderDays = () => {
+                const month = Number(monthSelect.value);
+                const year = Number(yearSelect.value);
+                const firstWeekday = new Date(Date.UTC(year, month, 1)).getUTCDay();
+                const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+                daysGrid.replaceChildren();
+
+                for (let index = 0; index < firstWeekday; index += 1) {
+                    const spacer = document.createElement("span");
+                    spacer.className = "h-9";
+                    spacer.setAttribute("aria-hidden", "true");
+                    daysGrid.appendChild(spacer);
+                }
+
+                for (let day = 1; day <= daysInMonth; day += 1) {
+                    const dateValue = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                    const isSelected = dateInput.value === dateValue;
+                    const isFuture = dateValue > todayValue;
+                    const dayButton = document.createElement("button");
+                    dayButton.type = "button";
+                    dayButton.textContent = String(day);
+                    dayButton.disabled = isFuture;
+                    dayButton.setAttribute("aria-label", formatDate(dateValue));
+                    dayButton.setAttribute("aria-pressed", String(isSelected));
+                    dayButton.className = `h-9 w-full rounded-lg text-sm transition ${
+                        isSelected
+                            ? "bg-sage-600 font-bold text-white"
+                            : "text-slate-700 hover:bg-sage-50"
+                    } disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent`;
+                    dayButton.addEventListener("click", () => {
+                        dateInput.value = dateValue;
+                        display.textContent = formatDate(dateValue);
+                        display.classList.remove("text-slate-500");
+                        display.classList.add("text-slate-800");
+                        trigger.setAttribute("aria-label", `Birthdate: ${formatDate(dateValue)}`);
+                        document.getElementById("signupMessage").textContent = "";
+                        closePicker(true);
+                    });
+                    daysGrid.appendChild(dayButton);
+                }
+            };
+
+            const setCalendarDate = value => {
+                const [year, month] = value.split("-").map(Number);
+                if (year >= 1900 && year <= currentYear && month >= 1 && month <= 12) {
+                    yearSelect.value = String(year);
+                    monthSelect.value = String(month - 1);
+                }
+            };
+
+            const openPicker = () => {
+                if (dateInput.value) {
+                    setCalendarDate(dateInput.value);
+                }
+                renderDays();
+                picker.classList.remove("hidden");
+                trigger.setAttribute("aria-expanded", "true");
+                monthSelect.focus();
+            };
+
+            monthSelect.addEventListener("change", renderDays);
+            yearSelect.addEventListener("change", renderDays);
+            trigger.addEventListener("click", () => {
+                if (picker.classList.contains("hidden")) {
+                    openPicker();
+                } else {
+                    closePicker(false);
+                }
+            });
+            document.getElementById("signupBirthdateClear").addEventListener("click", () => {
+                dateInput.value = "";
+                display.textContent = "Choose your birthdate";
+                display.classList.add("text-slate-500");
+                display.classList.remove("text-slate-800");
+                trigger.setAttribute("aria-label", "Choose your birthdate");
+                renderDays();
+            });
+            document.getElementById("signupBirthdateClose").addEventListener("click", () => closePicker(true));
+            document.addEventListener("click", event => {
+                if (!picker.classList.contains("hidden") && !field.contains(event.target)) {
+                    closePicker(false);
+                }
+            });
+            document.addEventListener("keydown", event => {
+                if (event.key === "Escape" && !picker.classList.contains("hidden")) {
+                    event.preventDefault();
+                    closePicker(true);
+                }
+            });
+        }
+
+        initializeSignupBirthdatePicker();
+
         // SIGN UP FORM
         document.getElementById("signupForm")?.addEventListener("submit", async function(e) {
             e.preventDefault();
@@ -1105,10 +1112,21 @@
             const lastName = document.getElementById("signupLastName").value.trim();
             const name = [firstName, middleName, lastName].filter(Boolean).join(" ");
             const contact = document.getElementById("signupContact").value.trim();
+            const birthdate = document.getElementById("signupBirthdate").value;
             const address = document.getElementById("signupAddress").value.trim();
             const email = document.getElementById("signupEmail").value.trim().toLowerCase();
             const password = document.getElementById("signupPassword").value;
             const role = document.getElementById("signupRole").value;
+
+            if (!birthdate) {
+                message.textContent = "Please choose your birthdate.";
+                const birthdateButton = document.getElementById("signupBirthdateButton");
+                birthdateButton.focus();
+                if (birthdateButton.getAttribute("aria-expanded") !== "true") {
+                    birthdateButton.click();
+                }
+                return;
+            }
 
             if (!Object.hasOwn(rolePages, role)) {
                 document.getElementById("signupMessage").textContent = "Please select a valid account role.";
@@ -1150,13 +1168,15 @@
                 const result = await apiRequest("/api/register", {
                     method: "POST",
                     body: JSON.stringify({
-                        name, contactNumber: contact, address, email, password, role, ...roleDetails
+                        name, contactNumber: contact, birthdate, address, email, password, role, ...roleDetails
                     })
                 });
 
                 currentUser = result.user;
                 users = users.filter(user => user.id !== currentUser.id);
                 users.push(currentUser);
+                cart = loadCartForUser(currentUser);
+                selectedCartProductIds.clear();
                 saveData();
                 sessionStorage.setItem("atudtaAuthToken", result.sessionToken);
                 sessionStorage.setItem("atudtaSession", currentUser.id);
@@ -1190,6 +1210,8 @@
                 currentUser = result.user;
                 users = users.filter(user => user.id !== currentUser.id);
                 users.push(currentUser);
+                cart = loadCartForUser(currentUser);
+                selectedCartProductIds.clear();
                 saveData();
                 sessionStorage.setItem("atudtaAuthToken", result.sessionToken);
                 sessionStorage.setItem("atudtaSession", currentUser.id);
@@ -1215,6 +1237,8 @@
 
         function logout() {
             currentUser = null;
+            cart = [];
+            selectedCartProductIds.clear();
             riderCurrentLocation = null;
             riderLocationRequestPending = false;
             const locationButton = document.getElementById("riderLocationButton");
@@ -1277,7 +1301,7 @@
             });
 
             if (filtered.length === 0) {
-                grid.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10 font-semibold">No wet market produce found.</p>`;
+                grid.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10 font-semibold">No wet market products found.</p>`;
                 return;
             }
 
@@ -1358,7 +1382,7 @@
         }
 
         function updateCartUI() {
-            localStorage.setItem("atudtaCart", JSON.stringify(cart));
+            saveCartForCurrentUser();
             document.getElementById("cartBadgeCount").textContent = cart.length;
 
             const list = document.getElementById("cartItemsList");
@@ -1452,21 +1476,27 @@
             updateCartUI();
         }
 
-        function removeSelectedCartItems() {
+        async function removeSelectedCartItems() {
             if (selectedCartProductIds.size === 0) {
                 showToast("Select at least one product to delete.", "error");
                 return;
             }
 
-            const selectedCount = cart.filter(item => selectedCartProductIds.has(item.productId)).length;
-            if (!window.confirm(`Delete ${selectedCount} selected product${selectedCount === 1 ? "" : "s"} from your cart?`)) {
+            const selectedIds = new Set(selectedCartProductIds);
+            const selectedCount = cart.filter(item => selectedIds.has(item.productId)).length;
+            if (!await showConfirmation({
+                title: "Remove products from cart?",
+                message: `Remove ${selectedCount} selected product${selectedCount === 1 ? "" : "s"} from your cart?`,
+                confirmLabel: "Remove Products",
+                danger: true
+            })) {
                 return;
             }
 
-            cart = cart.filter(item => !selectedCartProductIds.has(item.productId));
+            cart = cart.filter(item => !selectedIds.has(item.productId));
             selectedCartProductIds.clear();
             updateCartUI();
-            showToast(`${selectedCount} selected product${selectedCount === 1 ? "" : "s"} deleted from your cart.`);
+            showToast(`${selectedCount} selected product${selectedCount === 1 ? "" : "s"} removed from your cart.`);
         }
 
         function changeCartQuantity(prodId, change) {
@@ -1490,10 +1520,24 @@
             updateCartUI();
         }
 
-        function removeFromCart(prodId) {
+        async function removeFromCart(prodId) {
+            const item = cart.find(cartItem => cartItem.productId === prodId);
+            if (!item) {
+                return;
+            }
+            if (!await showConfirmation({
+                title: "Remove product from cart?",
+                message: `Remove "${item.name}" from your cart?`,
+                confirmLabel: "Remove Product",
+                danger: true
+            })) {
+                return;
+            }
+
             cart = cart.filter(c => c.productId !== prodId);
             selectedCartProductIds.delete(prodId);
             updateCartUI();
+            showToast(`${item.name} was removed from your cart.`);
         }
 
         function toggleCartModal(open) {
@@ -1598,7 +1642,18 @@
             const totalAmount = itemsSubtotal + DELIVERY_FEE;
             const address = document.getElementById("checkoutAddress").value;
             const paymentMethod = document.getElementById("checkoutPayment").value;
-            if (!window.confirm(`Confirm delivery to:\n${address}\n\nItems subtotal: ₱${itemsSubtotal.toFixed(2)}\nDelivery fee: ₱${DELIVERY_FEE.toFixed(2)}\nOrder total: ₱${totalAmount.toFixed(2)}\n\nPlace this order for ${selectedItems.reduce((sum, item) => sum + item.quantity, 0)} item(s)?`)) {
+            const itemCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
+            if (!await showConfirmation({
+                title: "Confirm Order",
+                message: `Recipient: ${currentUser.name}\nDelivery address: ${address}`,
+                confirmLabel: "Place Order",
+                summaryRows: [
+                    { label: "Items subtotal", value: `₱${itemsSubtotal.toFixed(2)}` },
+                    { label: "Delivery fee", value: `₱${DELIVERY_FEE.toFixed(2)}` }
+                ],
+                highlightedTotal: `₱${totalAmount.toFixed(2)}`,
+                footerMessage: `Place this order for ${itemCount} item(s)?`
+            })) {
                 return;
             }
 
@@ -1835,12 +1890,6 @@
                 showToast("Product not found.", "error");
                 return;
             }
-            if (document.body.dataset.appPage !== "reviews") {
-                const orderParameter = preferredOrderId ? `&order=${encodeURIComponent(preferredOrderId)}` : "";
-                window.location.assign(`reviews.html?product=${encodeURIComponent(productId)}${orderParameter}`);
-                return;
-            }
-
             selectedProductId = productId;
             const imageContainer = document.getElementById("detailProductImage");
             imageContainer.replaceChildren();
@@ -1848,7 +1897,7 @@
                 const image = document.createElement("img");
                 image.src = product.imageData;
                 image.alt = product.name;
-                image.className = "w-full h-full object-cover";
+                image.className = "block h-auto w-full object-contain";
                 imageContainer.appendChild(image);
             } else {
                 imageContainer.textContent = product.category === "Fruits"
@@ -2189,7 +2238,7 @@
             }
             toggleProductModal(false);
             e.target.reset();
-            showToast("Produce added");
+            showToast("Product added");
             renderAll();
         }
 
@@ -2282,7 +2331,12 @@
                 showToast("You can only delete products in your business.", "error");
                 return;
             }
-            if (!window.confirm(`Are you sure you want to archive "${product.name}"? It will be removed from the product listings but kept in the database.`)) {
+            if (!await showConfirmation({
+                title: "Delete Product?",
+                message: `Are you sure you want to archive "${product.name}"? It will be removed from the product listings but kept in the database.`,
+                confirmLabel: "Delete Product",
+                danger: true
+            })) {
                 return;
             }
             try {
@@ -2290,7 +2344,7 @@
                 products = products.filter(item => item.id !== prodId);
                 saveData();
                 renderAll();
-                showToast("Produce deleted");
+                showToast("Product deleted");
             } catch (error) {
                 console.error("Could not delete product.", error);
                 showToast(error.message || "Could not delete product.", "error");
@@ -2836,10 +2890,6 @@
                 renderVendorDashboard();
             } else if (page === "rider" || page === "delivery") {
                 renderRiderDashboard();
-            } else if (page === "admin") {
-                loadAdminDashboard().catch(error => {
-                    showToast(error.message || "Could not load the admin dashboard.", "error");
-                });
             }
         }
 
@@ -2856,6 +2906,9 @@
             }
             if (savedSession) {
                 currentUser = users.find(user => user.id === savedSession || user.email === savedSession) || null;
+                if (currentUser) {
+                    cart = loadCartForUser(currentUser);
+                }
             }
 
             const page = document.body.dataset.appPage;
@@ -2863,8 +2916,7 @@
             const rolePageAllowed = {
                 Customer: ["customer", "products", "payment", "reviews"],
                 Vendor: ["vendor"],
-                Rider: ["rider", "delivery"],
-                Admin: ["admin"]
+                Rider: ["rider", "delivery"]
             };
 
             if (!currentUser) {
@@ -2891,7 +2943,7 @@
 
             document.querySelectorAll(".userName").forEach(el => { el.textContent = currentUser.name; });
             document.getElementById("headerUserLabel").textContent =
-                formatUserIdentity(currentUser);
+                `${currentUser.name} (${currentUser.role}) - ${currentUser.barangay || "Polangui"}`;
             renderAuthHeaderButtons();
             try {
                 await loadProductsFromDatabase();
@@ -2917,17 +2969,13 @@
             }
             let orderRefreshErrorShown = false;
             window.setInterval(async () => {
-                if (document.hidden || !["customer", "vendor", "rider", "delivery", "admin"].includes(page)) {
+                if (document.hidden || !["customer", "vendor", "rider", "delivery"].includes(page)) {
                     return;
                 }
                 try {
-                    if (page === "admin") {
-                        await loadAdminDashboard();
-                    } else {
-                        await loadOrdersFromDatabase();
-                        renderAll();
-                    }
+                    await loadOrdersFromDatabase();
                     orderRefreshErrorShown = false;
+                    renderAll();
                 } catch (error) {
                     console.error("Could not refresh orders from MongoDB.", error);
                     if (!orderRefreshErrorShown) {

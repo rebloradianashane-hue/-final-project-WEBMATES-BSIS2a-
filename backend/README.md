@@ -27,15 +27,13 @@ npm install
 npm start
 ```
 
-For development, `npm start` runs nodemon and restarts the server when files change.
+For development with automatic restarts:
+
+```powershell
+npm run dev
+```
 
 The server starts listening only after it connects to MongoDB. When startup succeeds, open `http://localhost:5000` (or the configured port).
-
-## Deploy on Render
-
-Create a Render **Web Service** from the repository root. Set the build command to `npm install` and the start command to `node backend/server.js` (do not use `npm start` on Render). In the service's Environment settings, set `MONGO_URI` to a reachable MongoDB connection string; do not rely on the local `backend/.env` file being available on Render. Render supplies `PORT` automatically.
-
-The service only starts listening after MongoDB connects. Make sure the MongoDB provider allows connections from Render. If deployment still fails, check the Render service logs for the first build or runtime error.
 
 ## Docker Compose
 
@@ -57,4 +55,3 @@ Protected routes require a valid session token.
 ## Delete behavior
 
 Account, product, and review delete actions permanently remove their matching MongoDB documents. Delivery and payment delete routes also remove their matching documents. Records that were soft-deleted before this behavior was added are not automatically purged.
-

@@ -8,6 +8,7 @@ const helmet = require('helmet');
 const { xss } = require('express-xss-sanitizer');
 const rateLimit = require('express-rate-limit'); 
 const app = express();
+const connectDB = require('./confg/db');
 
 // ==========================================
 // STEP 1: SECURITY & MIDDLEWARE SETUP
@@ -73,11 +74,9 @@ const deliveryRoutes = require('./routes/deliveryRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const authRoutes = require('./routes/authRoutes');
-const adminRoutes = require('./routes/adminRoutes');
 
 app.use('/api/register', registerRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productsRoutes);
@@ -86,6 +85,13 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
+
+app.get('/api/health/database', (req, res) => {
+  res.status(200).json({
+    connected: mongoose.connection.readyState === 1,
+    database: mongoose.connection.name || null
+  });
+});
 
 // ==========================================
 // STEP 3.5: ROOT ROUTE HANDLER (Fixes Cannot GET /)
@@ -99,9 +105,9 @@ app.get('/', (req, res) => {
 // ==========================================
 const PORT = process.env.PORT || 5000;
 
-mongoose.connect(mongoUri)
+connectDB()
   .then(() => {
-    console.log('Connected to MongoDB successfully!');
+    console.log(`Active MongoDB database: ${mongoose.connection.name}`);
     app.listen(PORT, () => {
       console.log(`Server running smoothly on port ${PORT}`);
     });
