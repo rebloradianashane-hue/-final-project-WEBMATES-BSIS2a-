@@ -12,7 +12,7 @@ npm start
 
 When the terminal reports that MongoDB connected and the server is running, open `http://localhost:5000` in Chrome. The root page redirects to the login page. Signup and login are sent to the backend; new accounts are saved in MongoDB, and passwords are stored as scrypt hashes rather than plain text. The VS Code launch configuration also expects the server to be running on port 5000.
 
-Do not open the HTML files with `file://`; use `http://localhost:5000` so the frontend can reach the backend API. When the frontend is opened on `localhost` or `127.0.0.1`, API requests are sent to the local backend. Other hosts use the configured Render backend.
+Do not open the HTML files with `file://`; use `http://localhost:5000` so the frontend can reach the backend API. To test from a phone on the same Wi-Fi, open `http://<computer-LAN-IP>:5000` on the phone; allow Node.js through the computer's firewall if prompted. The frontend uses the same local backend when opened on port `5000`, including from the phone. Other hosts use the configured Render backend.
 
 ## Deploying on Render
 
