@@ -336,7 +336,12 @@
         // ==========================================
         // PAGE & AUTHENTICATION NAVIGATION LOGIC
         // ==========================================
-        const rolePages = { Vendor: "vendor.html", Customer: "products.html", Rider: "rider.html" };
+        const rolePages = {
+            Admin: "admin.html",
+            Vendor: "vendor.html",
+            Customer: "products.html",
+            Rider: "rider.html"
+        };
         const pageRoutes = {
             loginPage: "login.html",
             signupPage: "signup.html",
@@ -2918,6 +2923,7 @@
             const page = document.body.dataset.appPage;
             const publicPages = ["login", "signup"];
             const rolePageAllowed = {
+                Admin: ["admin"],
                 Customer: ["customer", "products", "payment", "reviews"],
                 Vendor: ["vendor"],
                 Rider: ["rider", "delivery"]

@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         required: true,
-        enum: ['Customer', 'Vendor', 'Rider'],
+        enum: ['Admin', 'Customer', 'Vendor', 'Rider'],
         default: 'Customer'
     },
     password: {
@@ -49,6 +49,15 @@ const userSchema = new mongoose.Schema({
     stallNumber: { type: String, trim: true },
     stallName: { type: String, trim: true },
     licenseNumber: { type: String, trim: true },
+    adminLevel: {
+        type: String,
+        enum: ['super_admin', 'sub_admin']
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
     deletedAt: { type: Date, default: null }
 }, { timestamps: true }); // Automatically manages createdAt and updatedAt fields
 
