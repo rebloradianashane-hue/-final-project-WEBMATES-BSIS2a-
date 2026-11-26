@@ -2,8 +2,9 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const Admin = require('../models/admin');
 const User = require('../models/user');
-const { createAccount, hashPassword } = require('../utils/account');
+const { createAdminAccount, hashPassword } = require('../utils/account');
 
 const adminDetails = {
   name: process.env.ADMIN_NAME || 'ATUDTA Admin',
@@ -20,28 +21,23 @@ async function seedAdmin() {
   }
 
   await mongoose.connect(process.env.MONGO_URI);
-  await User.updateMany(
-    { role: 'Admin', adminLevel: 'manager' },
-    { $set: { adminLevel: 'sub_admin' } }
-  );
 
-  const existingAdmin = await User.findOne({ email: adminDetails.email });
+  const legacyAdmin = await User.findOne({
+    email: adminDetails.email,
+    role: 'Admin'
+  });
+  if (legacyAdmin) {
+    throw new Error('Run scripts/migrate-admins.js before seeding the Admin account.');
+  }
+
+  const existingAdmin = await Admin.findOne({ email: adminDetails.email }).select('+password');
   if (existingAdmin) {
-    existingAdmin.role = 'Admin';
     existingAdmin.adminLevel = 'super_admin';
     existingAdmin.createdBy = null;
     if (process.env.ADMIN_PASSWORD) {
       existingAdmin.password = await hashPassword(process.env.ADMIN_PASSWORD);
     }
     await existingAdmin.save();
-    await User.updateMany(
-      {
-        role: 'Admin',
-        adminLevel: 'sub_admin',
-        $or: [{ createdBy: null }, { createdBy: { $exists: false } }]
-      },
-      { $set: { createdBy: existingAdmin._id } }
-    );
     console.log(`Admin account is already ready: ${adminDetails.email}`);
     return;
   }
@@ -49,7 +45,7 @@ async function seedAdmin() {
   const temporaryPassword = process.env.ADMIN_PASSWORD ||
     `${crypto.randomBytes(6).toString('base64').replace(/[^A-Za-z0-9]/g, '')}A1`;
 
-  await createAccount({
+  await createAdminAccount({
     ...adminDetails,
     password: temporaryPassword
   });

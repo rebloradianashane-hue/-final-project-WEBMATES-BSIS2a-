@@ -52,6 +52,12 @@ Docker Compose is not configured in this repository yet; it has no `compose.yaml
 
 Protected routes require a valid session token.
 
+## Admin account storage
+
+Admin accounts are stored separately from regular users in the `atudta_admins` MongoDB collection. When upgrading a database with Admin records in `users`, run `node backend/scripts/migrate-admins.js` from the repository root. The migration preserves Admin login history in `atudta_admin_login_history` and removes a legacy Admin record from `users` only after verifying its copy.
+
+The `node backend/scripts/create-admin.js` script creates or promotes the configured Super Admin in `atudta_admins`. Set `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_CONTACT_NUMBER`, and `ADMIN_PASSWORD` in `backend/.env`; never commit that file.
+
 ## Delete behavior
 
 Account, product, and review delete actions permanently remove their matching MongoDB documents. Delivery and payment delete routes also remove their matching documents. Records that were soft-deleted before this behavior was added are not automatically purged.

@@ -1,7 +1,8 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/user');
-const AdminLogin = require('../models/adminLogin');
+const Admin = require('../models/admin');
+const AdminLoginHistory = require('../models/adminLoginHistory');
 const { publicAccount, verifyPassword } = require('../utils/account');
 const { createSession, requireSession, revokeUserSessions } = require('../middleware/sessionAuth');
 
@@ -20,13 +21,19 @@ router.post(
     }
 
     try {
-      const user = await User.findOne({ email: req.body.email.trim().toLowerCase() }).select('+password');
+      const email = req.body.email.trim().toLowerCase();
+      let accountType = 'admin';
+      let user = await Admin.findOne({ email, role: 'Admin', password: { $exists: true } }).select('+password');
+      if (!user) {
+        accountType = 'user';
+        user = await User.findOne({ email }).select('+password');
+      }
       if (!user || user.deletedAt || !(await verifyPassword(req.body.password, user.password))) {
         return res.status(401).json({ error: 'Invalid email or password.' });
       }
 
-      if (user.role === 'Admin') {
-        await AdminLogin.create({
+      if (accountType === 'admin') {
+        await AdminLoginHistory.create({
           userId: user._id,
           email: user.email
         });
@@ -35,7 +42,7 @@ router.post(
       return res.status(200).json({
         message: 'Login successful.',
         user: publicAccount(user),
-        sessionToken: createSession(user._id)
+        sessionToken: createSession(user._id, accountType)
       });
     } catch (error) {
       console.error('Account login failed:', error);
@@ -102,11 +109,12 @@ router.put('/profile', requireSession, async (req, res) => {
 
 router.delete('/profile', requireSession, async (req, res) => {
   try {
-    const deletedUser = await User.findByIdAndDelete(req.authUser._id);
+    const Account = req.authAccountType === 'admin' ? Admin : User;
+    const deletedUser = await Account.findByIdAndDelete(req.authUser._id);
     if (!deletedUser) {
       return res.status(404).json({ error: 'Account not found.' });
     }
-    revokeUserSessions(req.authUser._id);
+    revokeUserSessions(req.authUser._id, req.authAccountType);
     return res.status(200).json({ message: 'Account deleted successfully.' });
   } catch (error) {
     console.error('Could not delete account:', error);

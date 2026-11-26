@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const User = require('../models/user');
+const Admin = require('../models/admin');
 const Product = require('../models/product');
 const Order = require('../models/order');
 const Review = require('../models/review');
@@ -20,15 +21,16 @@ function isSuperAdmin(user) {
 router.get('/dashboard', async (req, res) => {
   try {
     const [
-      activeUsers, suspendedUsers, customers, vendors, riders, admins,
+      activeUsers, suspendedUsers, activeAdmins, suspendedAdmins, customers, vendors, riders,
       products, orders, reviews, deliveries, payments
     ] = await Promise.all([
       User.countDocuments({ deletedAt: null }),
       User.countDocuments({ deletedAt: { $ne: null } }),
+      Admin.countDocuments({ deletedAt: null }),
+      Admin.countDocuments({ deletedAt: { $ne: null } }),
       User.countDocuments({ role: 'Customer', deletedAt: null }),
       User.countDocuments({ role: 'Vendor', deletedAt: null }),
       User.countDocuments({ role: 'Rider', deletedAt: null }),
-      User.countDocuments({ role: 'Admin', deletedAt: null }),
       Product.countDocuments(),
       Order.countDocuments(),
       Review.countDocuments(),
@@ -37,7 +39,14 @@ router.get('/dashboard', async (req, res) => {
     ]);
     return res.json({
       currentAdminLevel: req.authUser.adminLevel || 'sub_admin',
-      users: { active: activeUsers, suspended: suspendedUsers, customers, vendors, riders, admins },
+      users: {
+        active: activeUsers + activeAdmins,
+        suspended: suspendedUsers + suspendedAdmins,
+        customers,
+        vendors,
+        riders,
+        admins: activeAdmins
+      },
       products,
       orders,
       reviews,
@@ -74,14 +83,21 @@ router.post('/users', async (req, res) => {
   }
 
   try {
-    const { createAccount } = require('../utils/account');
-    const adminUser = await createAccount({
+    const emailAddress = email.trim().toLowerCase();
+    const duplicateUser = await User.exists({
+      $or: [{ email: emailAddress }, { contactNumber: contactNumber.trim() }]
+    });
+    if (duplicateUser) {
+      return res.status(409).json({ error: 'Email or contact number is already registered.' });
+    }
+
+    const { createAdminAccount } = require('../utils/account');
+    const adminUser = await createAdminAccount({
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: emailAddress,
       password,
       contactNumber: contactNumber.trim(),
       address: address.trim(),
-      role: 'Admin',
       adminLevel: 'sub_admin',
       createdBy: req.authUser._id
     });
@@ -102,9 +118,14 @@ router.get('/users', async (req, res) => {
   try {
     let users;
     if (isSuperAdmin(req.authUser)) {
-      users = await User.find().populate('createdBy', 'name email').sort({ createdAt: -1 });
+      const [regularUsers, adminUsers] = await Promise.all([
+        User.find().sort({ createdAt: -1 }),
+        Admin.find().populate('createdBy', 'name email').sort({ createdAt: -1 })
+      ]);
+      users = [...regularUsers, ...adminUsers]
+        .sort((left, right) => right.createdAt - left.createdAt);
     } else {
-      users = await User.find({ role: { $ne: 'Admin' } }).sort({ createdAt: -1 });
+      users = await User.find().sort({ createdAt: -1 });
     }
     return res.json(users.map(publicAccount));
   } catch (error) {
@@ -126,7 +147,7 @@ router.patch('/users/:id/status', async (req, res) => {
   }
 
   try {
-    const target = await User.findById(req.params.id);
+    const target = await Admin.findById(req.params.id) || await User.findById(req.params.id);
     if (!target) {
       return res.status(404).json({ error: 'User not found.' });
     }
@@ -143,6 +164,9 @@ router.patch('/users/:id/status', async (req, res) => {
 
     target.deletedAt = suspended ? new Date() : null;
     await target.save();
+    if (suspended) {
+      revokeUserSessions(target._id, target.role === 'Admin' ? 'admin' : 'user');
+    }
     return res.json({
       message: suspended ? 'User suspended successfully.' : 'User restored successfully.',
       user: publicAccount(target)
@@ -165,7 +189,7 @@ router.delete('/users/:id', async (req, res) => {
   }
 
   try {
-    const target = await User.findById(req.params.id);
+    const target = await Admin.findById(req.params.id);
     if (!target) {
       return res.status(404).json({ error: 'Admin User not found.' });
     }
@@ -176,8 +200,8 @@ router.delete('/users/:id', async (req, res) => {
       return res.status(403).json({ error: 'You can only delete Admin Users created under your account.' });
     }
 
-    await User.deleteOne({ _id: target._id });
-    revokeUserSessions(target._id);
+    await Admin.deleteOne({ _id: target._id });
+    revokeUserSessions(target._id, 'admin');
     return res.json({ message: `Admin User ${target.email} was deleted successfully.` });
   } catch (error) {
     console.error('Could not delete Admin User:', error);

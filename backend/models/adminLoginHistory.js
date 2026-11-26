@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
-const adminLoginSchema = new mongoose.Schema({
+const adminLoginHistorySchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Admin',
     required: true
   },
   email: {
@@ -18,8 +18,8 @@ const adminLoginSchema = new mongoose.Schema({
     default: Date.now
   }
 }, {
-  collection: 'atudta_admins',
+  collection: 'atudta_admin_login_history',
   versionKey: false
 });
 
-module.exports = mongoose.model('AdminLogin', adminLoginSchema);
+module.exports = mongoose.model('AdminLoginHistory', adminLoginHistorySchema);

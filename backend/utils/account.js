@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { promisify } = require('util');
 const User = require('../models/user');
+const Admin = require('../models/admin');
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -44,6 +45,16 @@ async function createAccount(account) {
   return user.save();
 }
 
+async function createAdminAccount(account) {
+  const admin = new Admin({
+    ...account,
+    role: 'Admin',
+    email: account.email.trim().toLowerCase(),
+    password: await hashPassword(account.password)
+  });
+  return admin.save();
+}
+
 function publicAccount(user) {
   const account = user.toObject ? user.toObject() : { ...user };
   const { _id, password, __v, ...safeAccount } = account;
@@ -54,4 +65,11 @@ function publicAccount(user) {
   };
 }
 
-module.exports = { createAccount, hashPassword, isValidBirthdate, publicAccount, verifyPassword };
+module.exports = {
+  createAccount,
+  createAdminAccount,
+  hashPassword,
+  isValidBirthdate,
+  publicAccount,
+  verifyPassword
+};
