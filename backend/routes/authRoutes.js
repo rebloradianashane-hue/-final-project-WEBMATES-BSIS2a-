@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/user');
+const AdminLogin = require('../models/adminLogin');
 const { publicAccount, verifyPassword } = require('../utils/account');
 const { createSession, requireSession, revokeUserSessions } = require('../middleware/sessionAuth');
 
@@ -22,6 +23,13 @@ router.post(
       const user = await User.findOne({ email: req.body.email.trim().toLowerCase() }).select('+password');
       if (!user || user.deletedAt || !(await verifyPassword(req.body.password, user.password))) {
         return res.status(401).json({ error: 'Invalid email or password.' });
+      }
+
+      if (user.role === 'Admin') {
+        await AdminLogin.create({
+          userId: user._id,
+          email: user.email
+        });
       }
 
       return res.status(200).json({
