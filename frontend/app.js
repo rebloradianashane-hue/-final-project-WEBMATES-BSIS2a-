@@ -575,6 +575,29 @@
                 createSettingsMenuItem("Account deletion", "Delete your account and sign out", "fa-solid fa-user-slash", event => deleteAccount(event), "border-rose-200 hover:border-rose-300 hover:bg-rose-50")
             );
 
+            const adminUsersView = document.createElement("section");
+            adminUsersView.id = "settingsAdminUsers";
+            adminUsersView.className = "hidden space-y-4";
+            const adminUsersBackButton = document.createElement("button");
+            adminUsersBackButton.type = "button";
+            adminUsersBackButton.className = "mb-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800";
+            adminUsersBackButton.textContent = "← Settings";
+            adminUsersBackButton.addEventListener("click", () => showSettingsView("settingsHome"));
+            const adminUsersTitle = document.createElement("h2");
+            adminUsersTitle.className = "text-2xl font-bold text-sage-800";
+            adminUsersTitle.textContent = "Admin Users";
+            const createAdminForm = document.getElementById("createAdminForm");
+            if (currentUser?.role === "Admin" && currentUser.adminLevel === "super_admin" && createAdminForm) {
+                settingsHome.appendChild(createSettingsMenuItem(
+                    "Admin Users",
+                    "Create another Admin account",
+                    "fa-solid fa-user-shield",
+                    () => showSettingsView("settingsAdminUsers")
+                ));
+                createAdminForm.classList.remove("hidden");
+                adminUsersView.append(adminUsersBackButton, adminUsersTitle, createAdminForm);
+            }
+
             const privacyView = document.createElement("section");
             privacyView.id = "settingsPrivacy";
             privacyView.className = "hidden space-y-4";
@@ -610,13 +633,16 @@
             profileBackButton.addEventListener("click", () => showSettingsView("settingsHome"));
             profileView.insertBefore(profileBackButton, profileView.firstChild);
 
-            modalContent.append(settingsHome, privacyView, profileView);
+            modalContent.append(settingsHome, privacyView, profileView, adminUsersView);
         }
 
         function showSettingsView(viewId) {
             ensureSettingsInterface();
-            ["settingsHome", "settingsPrivacy", "profileDetailsView"].forEach(id => {
-                document.getElementById(id).classList.toggle("hidden", id !== viewId);
+            ["settingsHome", "settingsPrivacy", "profileDetailsView", "settingsAdminUsers"].forEach(id => {
+                const view = document.getElementById(id);
+                if (view) {
+                    view.classList.toggle("hidden", id !== viewId);
+                }
             });
         }
 
@@ -2037,7 +2063,7 @@
                         heading.appendChild(deleteButton);
                     }
                     const comment = document.createElement("p");
-                    comment.className = "mt-2 text-sm text-slate-600 whitespace-pre-wrap";
+                    comment.className = "mt-2 text-sm text-black whitespace-pre-wrap";
                     comment.textContent = review.comment || "";
                     const date = document.createElement("p");
                     date.className = "mt-1 text-xs text-slate-400";
@@ -2152,7 +2178,7 @@
                 heading.append(productName, deleteButton);
 
                 const comment = document.createElement("p");
-                comment.className = "mt-2 text-sm text-slate-600 whitespace-pre-wrap";
+                comment.className = "mt-2 text-sm text-black whitespace-pre-wrap";
                 comment.textContent = review.comment || "";
                 const date = document.createElement("p");
                 date.className = "mt-1 text-xs text-slate-400";
@@ -2882,6 +2908,144 @@
                 }).join("");
         }
 
+        function renderAdminUsersTable(accounts) {
+            const tableBody = document.getElementById("adminUsersTableBody");
+            if (!tableBody) {
+                return;
+            }
+
+            if (!accounts.length) {
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.colSpan = 5;
+                cell.className = "px-4 py-8 text-center text-slate-500";
+                cell.textContent = "No accounts found.";
+                row.appendChild(cell);
+                tableBody.replaceChildren(row);
+                return;
+            }
+
+            const rows = accounts.map(account => {
+                const row = document.createElement("tr");
+                const creator = account.createdBy;
+                const creatorId = creator && typeof creator === "object"
+                    ? creator.id || creator._id
+                    : creator;
+                const creatorName = creator && typeof creator === "object"
+                    ? creator.name || creator.email
+                    : null;
+                const creatorLabel = creatorId
+                    ? String(creatorId) === String(currentUser?.id)
+                        ? "You"
+                        : creatorName || "Admin"
+                    : account.role === "Admin"
+                        ? "Super Admin"
+                        : "—";
+                const values = [
+                    account.name || "—",
+                    account.email || "—",
+                    account.role || "—",
+                    account.deletedAt ? "Suspended" : "Active",
+                    creatorLabel
+                ];
+                values.forEach((value, index) => {
+                    const cell = document.createElement("td");
+                    cell.className = index === 4
+                        ? "px-4 py-3 text-right text-slate-400"
+                        : "px-4 py-3 text-slate-700";
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+                return row;
+            });
+            tableBody.replaceChildren(...rows);
+        }
+
+        async function renderAdminDashboard() {
+            const createAdminForm = document.getElementById("createAdminForm");
+            const isSuperAdmin = currentUser?.role === "Admin" &&
+                currentUser.adminLevel === "super_admin";
+            if (createAdminForm) {
+                if (isSuperAdmin) {
+                    ensureSettingsInterface();
+                    createAdminForm.classList.remove("hidden");
+                } else {
+                    createAdminForm.classList.add("hidden");
+                }
+            }
+
+            try {
+                const [dashboard, accounts] = await Promise.all([
+                    apiRequest("/api/admin/dashboard"),
+                    apiRequest("/api/admin/users")
+                ]);
+                const values = {
+                    adminActiveUsers: dashboard.users?.active,
+                    adminSuspendedUsers: dashboard.users?.suspended,
+                    adminCustomers: dashboard.users?.customers,
+                    adminVendors: dashboard.users?.vendors,
+                    adminRiders: dashboard.users?.riders,
+                    adminProducts: dashboard.products,
+                    adminOrders: dashboard.orders,
+                    adminDeliveries: dashboard.deliveries
+                };
+                Object.entries(values).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element && Number.isFinite(Number(value))) {
+                        element.textContent = String(value);
+                    }
+                });
+                if (!Array.isArray(accounts)) {
+                    throw new Error("The server returned an invalid account list.");
+                }
+                renderAdminUsersTable(accounts);
+            } catch (error) {
+                console.error("Could not load admin dashboard.", error);
+                const tableBody = document.getElementById("adminUsersTableBody");
+                if (tableBody) {
+                    const row = document.createElement("tr");
+                    const cell = document.createElement("td");
+                    cell.colSpan = 5;
+                    cell.className = "px-4 py-8 text-center text-rose-700";
+                    cell.textContent = error.message || "Could not load accounts.";
+                    row.appendChild(cell);
+                    tableBody.replaceChildren(row);
+                }
+                showToast(error.message || "Could not load admin dashboard.", "error");
+            }
+        }
+
+        async function createAdminUser(event) {
+            event.preventDefault();
+            if (currentUser?.role !== "Admin" || currentUser.adminLevel !== "super_admin") {
+                showToast("Only the ATUDTA Super Admin can create Admin Users.", "error");
+                return;
+            }
+
+            const form = event.currentTarget;
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            try {
+                const result = await apiRequest("/api/admin/users", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name: document.getElementById("adminName").value.trim(),
+                        email: document.getElementById("adminEmail").value.trim().toLowerCase(),
+                        password: document.getElementById("adminPassword").value,
+                        contactNumber: document.getElementById("adminContact").value.trim(),
+                        address: document.getElementById("adminAddress").value.trim()
+                    })
+                });
+                form.reset();
+                showToast(result.message || "Admin User created successfully.");
+                await renderAdminDashboard();
+            } catch (error) {
+                showToast(error.message || "Could not create the Admin User account.", "error");
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
         // Render All Views
         function renderAll() {
             const page = document.body.dataset.appPage;
@@ -2899,6 +3063,8 @@
                 renderVendorDashboard();
             } else if (page === "rider" || page === "delivery") {
                 renderRiderDashboard();
+            } else if (page === "admin") {
+                void renderAdminDashboard();
             }
         }
 
