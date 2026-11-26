@@ -12,6 +12,12 @@ const DELIVERY_FEE = 58;
 const ESTIMATED_DELIVERY_MINUTES = 30;
 const paymentMethods = ['Cash on Delivery', 'GCash', 'Maya'];
 
+function isValidPhotoData(imageData) {
+    return typeof imageData === 'string' &&
+        imageData.length <= 1500000 &&
+        /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(imageData);
+}
+
 function getBusinessId(vendor) {
     const stallNumber = String(vendor.stallNumber || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const stallName = String(vendor.stallName || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -35,7 +41,14 @@ function toClientOrder(order) {
             name: item.productName,
             quantity: item.quantity,
             price: item.price,
-            stockUnit: item.stockUnit
+            stockUnit: item.stockUnit,
+            returnRequest: item.returnRequest ? {
+                reason: item.returnRequest.reason,
+                proofImageData: item.returnRequest.proofImageData,
+                status: item.returnRequest.status,
+                requestedAt: item.returnRequest.requestedAt,
+                reviewedAt: item.returnRequest.reviewedAt
+            } : null
         })),
         itemsSubtotal: order.itemsSubtotal,
         deliveryFee: order.deliveryFee,
@@ -50,6 +63,17 @@ function toClientOrder(order) {
         pickupAt: order.pickupAt,
         estimatedDeliveryAt: order.estimatedDeliveryAt,
         deliveryConfirmedAt: order.deliveryConfirmedAt,
+        deliveryFailureAt: order.deliveryFailureAt,
+        deliveryFailureReason: order.deliveryFailureReason,
+        deliveryProof: (order.deliveryProof || []).map(photo => ({
+            imageData: photo.imageData,
+            uploadedAt: photo.uploadedAt
+        })),
+        unsuccessfulDeliveryReport: order.unsuccessfulDeliveryReport ? {
+            courierName: order.unsuccessfulDeliveryReport.courierName,
+            reason: order.unsuccessfulDeliveryReport.reason,
+            reportedAt: order.unsuccessfulDeliveryReport.reportedAt
+        } : null,
         timestamp: order.createdAt
     };
 }
@@ -297,6 +321,279 @@ router.put('/:id/decline', requireSession, async (req, res) => {
     }
 });
 
+router.post('/:id/report-unsuccessful-delivery', requireSession, async (req, res) => {
+    if (req.authUser.role !== 'Customer') {
+        return res.status(403).json({ error: 'Only customers can report an unsuccessful delivery.' });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid order ID.' });
+    }
+
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+    if (reason.length < 5 || reason.length > 1000) {
+        return res.status(400).json({ error: 'Please provide a report reason between 5 and 1000 characters.' });
+    }
+
+    try {
+        const existingOrder = await Order.findOne({
+            _id: req.params.id,
+            customerID: req.authUser._id
+        }).lean();
+        if (!existingOrder) {
+            return res.status(404).json({ error: 'Order not found.' });
+        }
+        if (existingOrder.unsuccessfulDeliveryReport) {
+            return res.status(409).json({ error: 'An unsuccessful delivery report has already been submitted for this order.' });
+        }
+        if (!['Out for Delivery', 'Delivered', 'Unsuccessful Delivery'].includes(existingOrder.orderStatus) || !existingOrder.courierID) {
+            return res.status(409).json({ error: 'You can report the assigned rider during or after the delivery.' });
+        }
+
+        const order = await Order.findOneAndUpdate(
+            {
+                _id: existingOrder._id,
+                customerID: req.authUser._id,
+                orderStatus: { $in: ['Out for Delivery', 'Delivered', 'Unsuccessful Delivery'] },
+                courierID: existingOrder.courierID,
+                unsuccessfulDeliveryReport: null
+            },
+            {
+                $set: {
+                    unsuccessfulDeliveryReport: {
+                        customerID: req.authUser._id,
+                        courierID: existingOrder.courierID,
+                        courierName: existingOrder.courierName,
+                        reason,
+                        reportedAt: new Date()
+                    }
+                }
+            },
+            { new: true, runValidators: true }
+        );
+        if (!order) {
+            return res.status(409).json({ error: 'This order changed before the report could be submitted. Please refresh and try again.' });
+        }
+
+        return res.status(201).json({
+            message: 'Your unsuccessful delivery report has been submitted.',
+            order: toClientOrder(order)
+        });
+    } catch (error) {
+        console.error('Could not submit unsuccessful delivery report:', error);
+        return res.status(500).json({ error: 'Could not submit your delivery report.' });
+    }
+});
+
+router.post('/:id/items/:productId/return-request', requireSession, async (req, res) => {
+    if (req.authUser.role !== 'Customer') {
+        return res.status(403).json({ error: 'Only customers can request product returns.' });
+    }
+    if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.productId)) {
+        return res.status(400).json({ error: 'Invalid order or product ID.' });
+    }
+
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+    const proofImageData = typeof req.body?.proofImageData === 'string' ? req.body.proofImageData : '';
+    if (reason.length < 5 || reason.length > 1000) {
+        return res.status(400).json({ error: 'Please provide a return reason between 5 and 1000 characters.' });
+    }
+    if (!isValidPhotoData(proofImageData)) {
+        return res.status(400).json({ error: 'Upload a valid JPG, PNG, or WEBP product photo up to 1 MB.' });
+    }
+
+    try {
+        const existingOrder = await Order.findOne({
+            _id: req.params.id,
+            customerID: req.authUser._id
+        }).lean();
+        if (!existingOrder) {
+            return res.status(404).json({ error: 'Order not found.' });
+        }
+        if (existingOrder.orderStatus !== 'Delivered') {
+            return res.status(409).json({ error: 'A return can only be requested for a delivered order.' });
+        }
+
+        const productId = new mongoose.Types.ObjectId(req.params.productId);
+        const existingItem = existingOrder.items.find(item => String(item.productID) === String(productId));
+        if (!existingItem) {
+            return res.status(404).json({ error: 'Product not found in this order.' });
+        }
+        if (existingItem.returnRequest) {
+            return res.status(409).json({ error: 'A return request has already been submitted for this product.' });
+        }
+
+        const order = await Order.findOneAndUpdate(
+            {
+                _id: existingOrder._id,
+                customerID: req.authUser._id,
+                orderStatus: 'Delivered',
+                items: {
+                    $elemMatch: {
+                        productID: productId,
+                        returnRequest: null
+                    }
+                }
+            },
+            {
+                $set: {
+                    'items.$.returnRequest': {
+                        customerID: req.authUser._id,
+                        reason,
+                        proofImageData,
+                        status: 'Pending Vendor Approval',
+                        requestedAt: new Date(),
+                        reviewedAt: null
+                    }
+                }
+            },
+            { new: true, runValidators: true }
+        ).lean();
+        if (!order) {
+            return res.status(409).json({ error: 'This product changed before the return request could be submitted. Please refresh and try again.' });
+        }
+
+        return res.status(201).json({
+            message: 'Your return request and product photo were sent to the vendor for approval.',
+            order: toClientOrder(order)
+        });
+    } catch (error) {
+        console.error('Could not submit product return request:', error);
+        return res.status(500).json({ error: 'Could not submit the product return request.' });
+    }
+});
+
+router.put('/:id/items/:productId/return-request/proof', requireSession, async (req, res) => {
+    if (req.authUser.role !== 'Customer') {
+        return res.status(403).json({ error: 'Only customers can replace return photo proof.' });
+    }
+    if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.productId)) {
+        return res.status(400).json({ error: 'Invalid order or product ID.' });
+    }
+    const proofImageData = req.body?.proofImageData;
+    if (!isValidPhotoData(proofImageData)) {
+        return res.status(400).json({ error: 'Upload a valid JPG, PNG, or WEBP product photo up to 1 MB.' });
+    }
+
+    try {
+        const order = await Order.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                customerID: req.authUser._id,
+                orderStatus: 'Delivered',
+                items: {
+                    $elemMatch: {
+                        productID: new mongoose.Types.ObjectId(req.params.productId),
+                        'returnRequest.status': 'Pending Vendor Approval'
+                    }
+                }
+            },
+            { $set: { 'items.$.returnRequest.proofImageData': proofImageData } },
+            { new: true, runValidators: true }
+        ).lean();
+        if (!order) {
+            return res.status(409).json({ error: 'Only a pending return request for your delivered order can have its photo replaced.' });
+        }
+
+        return res.status(200).json({
+            message: 'Return proof photo replaced successfully.',
+            order: toClientOrder(order)
+        });
+    } catch (error) {
+        console.error('Could not replace product return proof photo:', error);
+        return res.status(500).json({ error: 'Could not replace the product return proof photo.' });
+    }
+});
+
+router.put('/:id/items/:productId/return-request', requireSession, async (req, res) => {
+    if (req.authUser.role !== 'Vendor') {
+        return res.status(403).json({ error: 'Only the product vendor can review a return request.' });
+    }
+    if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.productId)) {
+        return res.status(400).json({ error: 'Invalid order or product ID.' });
+    }
+
+    const status = req.body?.status;
+    if (!['Approved', 'Declined'].includes(status)) {
+        return res.status(400).json({ error: 'Choose whether to approve or decline this return request.' });
+    }
+
+    try {
+        const order = await Order.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                orderStatus: 'Delivered',
+                items: {
+                    $elemMatch: {
+                        productID: new mongoose.Types.ObjectId(req.params.productId),
+                        vendorID: req.authUser._id,
+                        'returnRequest.status': 'Pending Vendor Approval'
+                    }
+                }
+            },
+            {
+                $set: {
+                    'items.$.returnRequest.status': status,
+                    'items.$.returnRequest.reviewedAt': new Date()
+                }
+            },
+            { new: true, runValidators: true }
+        ).lean();
+        if (!order) {
+            return res.status(409).json({ error: 'This return request is no longer pending or does not belong to your vendor account.' });
+        }
+
+        return res.status(200).json({
+            message: status === 'Approved'
+                ? 'Return approved. The customer should return the product directly to your vendor location.'
+                : 'Return request declined.',
+            order: toClientOrder(order)
+        });
+    } catch (error) {
+        console.error('Could not review product return request:', error);
+        return res.status(500).json({ error: 'Could not review this product return request.' });
+    }
+});
+
+router.put('/:id/delivery-proof', requireSession, async (req, res) => {
+    if (req.authUser.role !== 'Rider') {
+        return res.status(403).json({ error: 'Only the assigned rider can replace delivery proof.' });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid order ID.' });
+    }
+    const proofImageData = req.body?.proofImageData;
+    if (!isValidPhotoData(proofImageData)) {
+        return res.status(400).json({ error: 'Upload a valid JPG, PNG, or WEBP delivery photo up to 1 MB.' });
+    }
+
+    try {
+        const order = await Order.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                orderStatus: 'Delivered',
+                courierID: req.authUser._id
+            },
+            {
+                $set: {
+                    deliveryProof: [{ imageData: proofImageData, uploadedAt: new Date() }]
+                }
+            },
+            { new: true, runValidators: true }
+        ).lean();
+        if (!order) {
+            return res.status(409).json({ error: 'Only the assigned rider can replace proof for a delivered order.' });
+        }
+
+        return res.status(200).json({
+            message: 'Delivery proof photo replaced successfully.',
+            order: toClientOrder(order)
+        });
+    } catch (error) {
+        console.error('Could not replace rider delivery proof:', error);
+        return res.status(500).json({ error: 'Could not replace the delivery proof photo.' });
+    }
+});
+
 router.put('/:id/status', requireSession, async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
         return res.status(400).json({ error: 'Invalid order ID.' });
@@ -360,19 +657,54 @@ router.put('/:id/status', requireSession, async (req, res) => {
         }
 
         if (status === 'Delivered') {
+            const deliveryProof = req.body?.deliveryProof;
+            if (!isValidPhotoData(deliveryProof)) {
+                return res.status(400).json({ error: 'Upload a JPG, PNG, or WEBP delivery photo up to 1 MB before marking this order delivered.' });
+            }
+
+            const deliveryConfirmedAt = new Date();
             const order = await Order.findOneAndUpdate(
                 {
                     _id: req.params.id,
                     orderStatus: 'Out for Delivery',
                     courierID: req.authUser._id
                 },
-                { $set: { orderStatus: status, deliveryConfirmedAt: new Date() } },
+                {
+                    $set: {
+                        orderStatus: status,
+                        deliveryConfirmedAt,
+                        deliveryProof: [{ imageData: deliveryProof, uploadedAt: deliveryConfirmedAt }]
+                    }
+                },
                 { new: true, runValidators: true }
             ).lean();
             if (!order) {
                 return res.status(409).json({ error: 'This delivery cannot be completed by your rider account.' });
             }
             await syncDeliveryRecord(order, 'delivered');
+            return res.status(200).json({ order: toClientOrder(order) });
+        }
+
+        if (status === 'Unsuccessful Delivery') {
+            const order = await Order.findOneAndUpdate(
+                {
+                    _id: req.params.id,
+                    orderStatus: 'Out for Delivery',
+                    courierID: req.authUser._id
+                },
+                {
+                    $set: {
+                        orderStatus: status,
+                        deliveryFailureAt: new Date(),
+                        deliveryFailureReason: 'Customer unavailable to receive the order.'
+                    }
+                },
+                { new: true, runValidators: true }
+            ).lean();
+            if (!order) {
+                return res.status(409).json({ error: 'This delivery cannot be marked unsuccessful by your rider account.' });
+            }
+            await syncDeliveryRecord(order, 'failed');
             return res.status(200).json({ order: toClientOrder(order) });
         }
 

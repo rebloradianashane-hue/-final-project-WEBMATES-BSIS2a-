@@ -48,6 +48,13 @@ const userSchema = new mongoose.Schema({
     badgeNumber: { type: String, trim: true },
     stallNumber: { type: String, trim: true },
     stallName: { type: String, trim: true },
+    birNumber: {
+        type: String,
+        trim: true,
+        required: function () {
+            return this.role === 'Vendor';
+        }
+    },
     licenseNumber: { type: String, trim: true },
     adminLevel: {
         type: String,

@@ -1,5 +1,40 @@
 const mongoose = require('mongoose');
 
+const productReturnRequestSchema = new mongoose.Schema({
+    customerID: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    reason: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 1000
+    },
+    proofImageData: {
+        type: String,
+        required: true,
+        maxlength: 1500000,
+        match: /^data:image\/(?:jpeg|png|webp);base64,/
+    },
+    status: {
+        type: String,
+        enum: ['Pending Vendor Approval', 'Approved', 'Declined'],
+        default: 'Pending Vendor Approval',
+        required: true
+    },
+    requestedAt: {
+        type: Date,
+        required: true,
+        default: Date.now
+    },
+    reviewedAt: {
+        type: Date,
+        default: null
+    }
+}, { _id: false });
+
 const orderItemSchema = new mongoose.Schema({
     productID: {
         type: mongoose.Schema.Types.ObjectId,
@@ -37,6 +72,52 @@ const orderItemSchema = new mongoose.Schema({
         type: Number,
         required: true,
         min: 0
+    },
+    returnRequest: {
+        type: productReturnRequestSchema,
+        default: null
+    }
+}, { _id: false });
+
+const deliveryProofSchema = new mongoose.Schema({
+    imageData: {
+        type: String,
+        required: true,
+        maxlength: 1500000,
+        match: /^data:image\/(?:jpeg|png|webp);base64,/
+    },
+    uploadedAt: {
+        type: Date,
+        required: true,
+        default: Date.now
+    }
+}, { _id: false });
+
+const unsuccessfulDeliveryReportSchema = new mongoose.Schema({
+    customerID: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    courierID: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    courierName: {
+        type: String,
+        required: true
+    },
+    reason: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 1000
+    },
+    reportedAt: {
+        type: Date,
+        required: true,
+        default: Date.now
     }
 }, { _id: false });
 
@@ -91,7 +172,7 @@ const orderSchema = new mongoose.Schema({
     },
     orderStatus: {
         type: String,
-        enum: ['Pending', 'Packed', 'Out for Delivery', 'Delivered'],
+        enum: ['Pending', 'Packed', 'Out for Delivery', 'Delivered', 'Unsuccessful Delivery'],
         default: 'Pending',
         required: true
     },
@@ -122,6 +203,23 @@ const orderSchema = new mongoose.Schema({
     },
     deliveryConfirmedAt: {
         type: Date,
+        default: null
+    },
+    deliveryFailureAt: {
+        type: Date,
+        default: null
+    },
+    deliveryFailureReason: {
+        type: String,
+        trim: true,
+        default: null
+    },
+    deliveryProof: {
+        type: [deliveryProofSchema],
+        default: []
+    },
+    unsuccessfulDeliveryReport: {
+        type: unsuccessfulDeliveryReportSchema,
         default: null
     }
 }, { timestamps: true });

@@ -39,15 +39,16 @@ router.post(
         businessRole: req.body.businessRole,
         badgeNumber: req.body.badgeNumber,
         stallNumber: req.body.stallNumber,
-        stallName: req.body.stallName
+        stallName: req.body.stallName,
+        birNumber: req.body.birNumber
       } : {}),
       ...(role === 'Rider' ? { licenseNumber: req.body.licenseNumber } : {})
     };
 
     if (role === 'Vendor' &&
-        ![accountDetails.businessRole, accountDetails.badgeNumber, accountDetails.stallNumber, accountDetails.stallName]
+        ![accountDetails.businessRole, accountDetails.badgeNumber, accountDetails.stallNumber, accountDetails.stallName, accountDetails.birNumber]
           .every(value => typeof value === 'string' && value.trim())) {
-      return res.status(400).json({ error: 'Complete all vendor account details.' });
+      return res.status(400).json({ error: 'Complete all vendor account details, including the BIR number.' });
     }
     if (role === 'Vendor' && !/^\d{3}-\d{3}-\d{3}$/.test(accountDetails.badgeNumber)) {
       return res.status(400).json({ error: 'Badge number must use the 111-222-333 format.' });

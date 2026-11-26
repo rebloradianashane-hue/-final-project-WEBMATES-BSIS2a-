@@ -69,10 +69,10 @@ router.put('/profile', requireSession, async (req, res) => {
     address: address.trim()
   };
   if (req.authUser.role === 'Vendor') {
-    const { businessRole, badgeNumber, stallNumber, stallName } = req.body;
-    if (![businessRole, badgeNumber, stallNumber, stallName]
+    const { businessRole, badgeNumber, stallNumber, stallName, birNumber } = req.body;
+    if (![businessRole, badgeNumber, stallNumber, stallName, birNumber]
       .every(value => typeof value === 'string' && value.trim())) {
-      return res.status(400).json({ error: 'Complete all vendor account details.' });
+      return res.status(400).json({ error: 'Complete all vendor account details, including the BIR number.' });
     }
     if (!/^\d{3}-\d{3}-\d{3}$/.test(badgeNumber.trim())) {
       return res.status(400).json({ error: 'Badge number must use the 111-222-333 format.' });
@@ -81,7 +81,8 @@ router.put('/profile', requireSession, async (req, res) => {
       businessRole: businessRole.trim(),
       badgeNumber: badgeNumber.trim(),
       stallNumber: stallNumber.trim(),
-      stallName: stallName.trim()
+      stallName: stallName.trim(),
+      birNumber: birNumber.trim()
     });
   } else if (req.authUser.role === 'Rider') {
     const { licenseNumber } = req.body;

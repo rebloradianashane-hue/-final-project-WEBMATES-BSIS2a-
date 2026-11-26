@@ -32,6 +32,16 @@ const reviewSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    imageData: {
+        type: String,
+        default: '',
+        maxlength: 1500000,
+        validate: {
+            validator: value => !value ||
+                /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value),
+            message: 'Review photo must be a JPG, PNG, or WEBP image.'
+        }
+    },
     deletedAt: {
         type: Date,
         default: null

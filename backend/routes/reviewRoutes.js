@@ -17,6 +17,7 @@ function toClientReview(review) {
         author: review.customerName || customer?.name || 'Customer',
         target: review.productName,
         comment: review.comments,
+        imageData: review.imageData || '',
         date: review.createdAt
     };
 }
@@ -26,10 +27,13 @@ router.post('/submit', requireSession, async (req, res) => {
         return res.status(403).json({ error: 'Only customers can submit reviews.' });
     }
 
-    const { orderID, productID, comments } = req.body || {};
+    const { orderID, productID, comments, imageData } = req.body || {};
     if (!mongoose.isValidObjectId(orderID) || !mongoose.isValidObjectId(productID) ||
-        typeof comments !== 'string' || !comments.trim()) {
-        return res.status(400).json({ error: 'A delivered order, product, and review comment are required.' });
+        typeof comments !== 'string' || !comments.trim() ||
+        (imageData !== undefined && imageData !== '' &&
+            (typeof imageData !== 'string' || imageData.length > 1500000 ||
+                !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(imageData)))) {
+        return res.status(400).json({ error: 'A delivered order, product, and review comment are required; the optional photo must be JPG, PNG, or WEBP up to 1 MB.' });
     }
 
     try {
@@ -50,7 +54,8 @@ router.post('/submit', requireSession, async (req, res) => {
             orderID: order._id,
             productID,
             productName: purchasedItem.productName,
-            comments: comments.trim()
+            comments: comments.trim(),
+            imageData: imageData || ''
         });
         return res.status(201).json({ message: 'Review saved successfully.', review: toClientReview(savedReview) });
     } catch (error) {
@@ -77,6 +82,39 @@ router.get('/', requireSession, async (req, res) => {
     } catch (error) {
         console.error('Could not load product reviews:', error);
         return res.status(500).json({ error: 'Could not load product reviews.' });
+    }
+});
+
+router.put('/:id/image', requireSession, async (req, res) => {
+    if (req.authUser.role !== 'Customer') {
+        return res.status(403).json({ error: 'Only customers can replace review photos.' });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid review ID.' });
+    }
+
+    const imageData = req.body?.imageData;
+    if (typeof imageData !== 'string' || imageData.length > 1500000 ||
+        !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(imageData)) {
+        return res.status(400).json({ error: 'Upload a valid JPG, PNG, or WEBP review photo up to 1 MB.' });
+    }
+
+    try {
+        const updatedReview = await Review.findOneAndUpdate(
+            { _id: req.params.id, customerID: req.authUser._id, deletedAt: null },
+            { $set: { imageData } },
+            { new: true, runValidators: true }
+        ).populate('customerID', 'name').populate('orderID', 'orderNumber');
+        if (!updatedReview) {
+            return res.status(404).json({ error: 'Review not found.' });
+        }
+        return res.status(200).json({
+            message: 'Review photo replaced successfully.',
+            review: toClientReview(updatedReview)
+        });
+    } catch (error) {
+        console.error('Could not replace product review photo:', error);
+        return res.status(500).json({ error: 'Could not replace the review photo.' });
     }
 });
 
